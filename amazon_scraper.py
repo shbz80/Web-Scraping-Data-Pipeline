@@ -2,6 +2,7 @@ import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 
+
 class AmazonScraper():
     def __init__(self, url) -> None:
         if not isinstance(url, str) or not len(url):
@@ -37,7 +38,7 @@ class AmazonScraper():
         sort_criteria = temp_tag.find_elements_by_xpath('./ul/li')
         xpath = './a'
         sort_criteria[-1].find_element_by_xpath(xpath).click()
-        time.sleep(1)
+        time.sleep(2)
 
     def go_to_next_page(self):
         """
@@ -53,7 +54,26 @@ class AmazonScraper():
         # else click next and return True
         else:
             last_element.click()
+            time.sleep(1)
             return False
+
+    def get_page_links(self):
+        """
+        Gets all the links in the current page
+        """
+        # get a list of book elements on the current page
+        xpath = '//div[@class="s-main-slot s-result-list s-search-results sg-row"]'
+        table_element = self.driver.find_element_by_xpath(xpath)
+        xpath = './div[@data-asin]//a[@class="a-link-normal s-no-outline"]'
+        books = table_element.find_elements_by_xpath(xpath)
+
+        # extract link from each book element and return a list of links
+        book_links = []
+        for book in books:
+            book_link = book.get_attribute('href')
+            book_links.append(book_link)
+
+        return book_links
 
 
 if __name__ == '__main__':
@@ -61,6 +81,7 @@ if __name__ == '__main__':
     amazonScraper = AmazonScraper(url)
     amazonScraper.connect_to_link()
     amazonScraper.sort_by_reviews()
-    is_not_last_page = amazonScraper.go_to_next_page()
+    page_links = amazonScraper.get_page_links()
+    # is_not_last_page = amazonScraper.go_to_next_page()
     while True:
         pass
