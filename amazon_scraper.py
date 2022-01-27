@@ -1,6 +1,7 @@
 import time
 from selenium import webdriver
 
+
 class AmazonScraper():
     def __init__(self, url) -> None:
         if not isinstance(url, str) or not len(url):
@@ -23,18 +24,16 @@ class AmazonScraper():
         xpath = './/span[@class="a-button-text a-declarative"]'
         sort_dropdown_button = sort_dropdown.find_element_by_xpath(xpath)
         sort_dropdown_button.click()
-        xpath = '//ul[@tabindex="-1"]'
-        sort_criteria = self.driver.find_elements_by_xpath(xpath)
+        xpath = '//div[@class="a-popover-inner"]'
+        temp_tag = self.driver.find_element_by_xpath(xpath)
+        sort_criteria = temp_tag.find_elements_by_xpath('./ul/li')
         xpath = './a'
         sort_criteria[-1].find_element_by_xpath(xpath).click()
-        while True:
-            pass
 
-
-
-        
 if __name__ == '__main__':
     url = 'https://www.amazon.com/s?i=stripbooks&rh=n%3A25&fs=true&qid=1643228276&ref=sr_pg_1'
     amazonScraper = AmazonScraper(url)
     amazonScraper.connect_to_link()
     amazonScraper.sort_by_reviews()
+    while True:
+        pass
