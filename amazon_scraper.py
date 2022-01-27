@@ -39,19 +39,21 @@ class AmazonScraper():
         sort_criteria[-1].find_element_by_xpath(xpath).click()
         time.sleep(1)
 
-    def is_last_page(self):
+    def go_to_next_page(self):
         """
-        Checks if the current reult page is the last one
+        Goes to the next page if it not the last page
         """
         xpath = '//span[@class="s-pagination-strip"]'
         pagination_strip = self.driver.find_element_by_xpath(xpath)
         elements = pagination_strip.find_elements_by_xpath('./*')
         last_element = elements[-1]
+        # if not the next page return False
         if last_element.find_elements(By.ID, "aria-disabled"):
-            return True
-        else:
             return False
-
+        # else click next and return True
+        else:
+            last_element.click()
+            return False
 
 
 if __name__ == '__main__':
@@ -59,7 +61,6 @@ if __name__ == '__main__':
     amazonScraper = AmazonScraper(url)
     amazonScraper.connect_to_link()
     amazonScraper.sort_by_reviews()
-    is_last_page = amazonScraper.is_last_page()
-    
+    is_not_last_page = amazonScraper.go_to_next_page()
     while True:
         pass
