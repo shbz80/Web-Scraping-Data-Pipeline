@@ -224,33 +224,33 @@ class AmazonBookScraper():
 
         return book_dict
 
-    # def scrape_books(self, num_books):
-    #     """
-    #     Collects num_books book links and then scraped data from 
-    #     each link.
-    #     Returns a list of dictionaries, with a dcitionay containing
-    #     data of a single book
-    #     """
-    #     # sorts the books by a criterion 
-    #     self.sort_by_reviews()
+    def scrape_books(self, num_books):
+        """
+        Collects num_books book links and then scraped data from 
+        each link.
+        Returns a list of dictionaries, with a dcitionay containing
+        data of a single book
+        """
+        # sorts the books by a criterion 
+        self.sort_by_reviews()
 
-    #     self.scraper_init_done = True
+        self.scraper_init_done = True
         
-    #     # gets all links for the required number of books
-    #     book_links = self.get_book_links(num_books)
+        # gets all links for the required number of books
+        book_links = self.get_book_links(num_books)
 
-    #     # prepares a list of scraped book records
-    #     scrape_list = []
-    #     count = 0
-    #     for book_link in book_links:
-    #         book_dict = self.scrape_book_data_from_link(book_link)
-    #         # add to list only if valid record
-    #         if book_dict: scrape_list.append(book_dict)
-    #         count += 1
-    #         print(f'Count: {count}')
+        # prepares a list of scraped book records
+        scrape_list = []
+        count = 0
+        for book_link in book_links:
+            book_dict = self.scrape_book_data_from_link(book_link)
+            # add to list only if valid record
+            if book_dict: scrape_list.append(book_dict)
+            count += 1
+            print(f'Count: {count}')
 
-    #     # returns the list of book records (dicts)
-    #     return scrape_list
+        # returns the list of book records (dicts)
+        return scrape_list
 
 if __name__ == '__main__':
     import pandas as pd
