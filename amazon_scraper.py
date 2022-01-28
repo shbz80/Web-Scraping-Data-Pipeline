@@ -3,7 +3,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 
 # sets the number of seconds to sleep after a click to a new page
-PAGE_SLEEP_TIME = 3     
+PAGE_SLEEP_TIME = 2     
 
 class AmazonBookScraper():
     def __init__(self, url) -> None:
@@ -21,6 +21,7 @@ class AmazonBookScraper():
     def sort_by_reviews(self):
         """
         Sort the results by number of reviews
+        TODO: recieve the sort criterion as argument
         """
         # clicks on the sort by dropdown button
         xpath = '//span[@class = "a-dropdown-container"]'
@@ -96,7 +97,7 @@ class AmazonBookScraper():
             link_list.extend(page_links)
 
         # Closes the browser after extracting all links
-        self.driver.quit()  
+        # self.driver.quit()  
 
         # returns only a maximum of num_books links
         if len(link_list) > num_books:
@@ -104,20 +105,167 @@ class AmazonBookScraper():
         else:
             return link_list
 
-    # def scrape_book_data_from_link(self, link):
+    def scrape_book_data_from_link(self, link):
+        """
+        Returns a dict with book attributes for a single book
+        TODO: consider breaking this function into smaller pieces
+        """
+        # opens the book page
+        self.driver.get(link)
+        time.sleep(PAGE_SLEEP_TIME)
+
+        book_dict = {}
+
+        # gets the book title
+        xpath = '//span[@id="productTitle"]'
+        element = self.driver.find_element_by_xpath(xpath)
+        if "Player's Handbook" in element.text:
+            return None
+        book_dict["title"] = element.text
+
+        # gets the author name
+        xpath_1 = '//div[@id="authorFollow_feature_div"]'
+        xpath_2 = '/div[@class="a-row a-spacing-top-small"]'
+        xpath_3 = '/div[@class="a-column a-span4 authorNameColumn"]/a'
+        elements = self.driver.find_elements_by_xpath(xpath_1+xpath_2+xpath_3)
+        book_dict["author(s)"] = ",".join([element.text for element in elements])
+
+        # gets some attributes
+        xpath = '//div[@id="detailBullets_feature_div"]/ul/li'
+        elements = self.driver.find_elements_by_xpath(xpath)
+        book_dict["date"] = None
+        book_dict["pages"] = None
+        book_dict["isbn"] = None
+        for element in elements:
+            items = element.find_elements_by_xpath('./span/span')
+            
+            # extracts date attribute
+            if "Publisher" in items[0].text:
+                date_string = items[1].text
+                # expects the date feature encolsed in paranthesis towards right
+                if date_string[-1] != ")":
+                    raise ValueError('No date value')
+                start_idx = 0
+                # searches backwards to find the opening bracket
+                for i in range(len(date_string)-1, -1, -1):
+                    if date_string[i] == "(":
+                        start_idx = i
+                        break
+                else:
+                    raise ValueError('No date value.')
+                # removes a comma
+                date = date_string[start_idx+1:-1]
+                date = "".join(date.split(","))
+                book_dict["date"] = date
+
+            # extracts pages attribute
+            if "pages" in items[1].text:
+                pages_string = items[1].text
+                pages = int(pages_string.split(" ")[0])
+                book_dict["pages"] = pages
+
+            # extracts isbn attribute
+            if 'ISBN-10' in items[0].text:
+                isbn_string = items[1].text
+                book_dict["isbn"] = isbn_string
+        
+        # gets product features
+        xpath = '//div[@id="detailBulletsWrapper_feature_div"]/ul'
+        elements = self.driver.find_elements_by_xpath(xpath)
+        best_seller_idx, review_rating_idx = 0, 1
+
+        # gets best selling rating
+        xpath = './li/span'
+        best_seller_string = elements[best_seller_idx].find_element_by_xpath(xpath)
+        best_seller_string = best_seller_string.text
+        try:
+            start_idx = best_seller_string.index("#") + 1
+        except ValueError:
+            print('Cannot find best seller ranking')
+        idx = start_idx
+        while best_seller_string[idx] != " ":
+            idx += 1
+        best_seller_string = best_seller_string[start_idx:idx]
+        best_seller_string = "".join(best_seller_string.split(","))
+        best_seller_rank = int(best_seller_string)
+        book_dict["best_seller_rank"] = best_seller_rank
+        
+        # gets reviwer rating
+        xpath = './/span[@class="reviewCountTextLinkedHistogram noUnderline"]'
+        element = elements[review_rating_idx].find_element_by_xpath(xpath)
+        review_rating_string = element.get_attribute("title")
+        review_rating = float(review_rating_string[:3])
+        book_dict["review_rating"] = review_rating
+
+        # gets review count
+        xpath = './/span[@id="acrCustomerReviewText"]'
+        element = elements[review_rating_idx].find_element_by_xpath(xpath)
+        review_count_string = element.text
+        review_count_string = review_count_string.split(" ")[0]
+        review_count_string = "".join(review_count_string.split(","))
+        review_count = int(review_count_string)
+        book_dict["review_count"] = review_count
+
+        # gets cover page image link
+        xpath = '//div[@id="main-image-container"]//img'
+        element = self.driver.find_element_by_xpath(xpath)
+        image_link = element.get_attribute("src")
+        book_dict["image_link"] = image_link
+
+        # gets book description
+        xpath_1 = '//div[@data-a-expander-name="book_description_expander"]'
+        xpath_2 = '/div/span'
+        try:
+            element = self.driver.find_element_by_xpath(xpath_1 + xpath_2)
+            description = element.text
+        except:
+            description = None
+        book_dict["description"] = description
+
+        return book_dict
+
+    # def scrape_books(self, num_books):
     #     """
-    #     Returns a json dict with book attributes for a single book
+    #     Collects num_books book links and then scraped data from 
+    #     each link.
+    #     Returns a list of dictionaries, with a dcitionay containing
+    #     data of a single book
     #     """
-    #     self.driver.get(link)
-    #     time.sleep(PAGE_SLEEP_TIME)
+    #     # sorts the books by a criterion 
+    #     self.sort_by_reviews()
+
+    #     self.scraper_init_done = True
+        
+    #     # gets all links for the required number of books
+    #     book_links = self.get_book_links(num_books)
+
+    #     # prepares a list of scraped book records
+    #     scrape_list = []
+    #     count = 0
+    #     for book_link in book_links:
+    #         book_dict = self.scrape_book_data_from_link(book_link)
+    #         # add to list only if valid record
+    #         if book_dict: scrape_list.append(book_dict)
+    #         count += 1
+    #         print(f'Count: {count}')
+
+    #     # returns the list of book records (dicts)
+    #     return scrape_list
 
 if __name__ == '__main__':
+    import pandas as pd
+
     url = 'https://www.amazon.com/s?i=stripbooks&rh=n%3A25&fs=true&qid=1643228276&ref=sr_pg_1'
     amazonBookScraper = AmazonBookScraper(url)
-    amazonBookScraper.scraper_init_done = True
-    amazonBookScraper.sort_by_reviews()
-    item_links = amazonBookScraper.get_book_links(100)
-    book_url = 'https://www.amazon.com/Midnight-Library-Novel-Matt-Haig/dp/0525559477/ref=sr_1_1?qid=1643367921&s=books&sr=1-1'
-    amazonBookScraper.scrape_book_data_from_link(book_url)
-    while True:
-        pass
+    # amazonBookScraper.scraper_init_done = True
+    # amazonBookScraper.sort_by_reviews()
+    # item_links = amazonBookScraper.get_book_links(100)
+    # book_url = 'https://www.amazon.com/Midnight-Library-Novel-Matt-Haig/dp/0525559477/ref=sr_1_1?qid=1643367921&s=books&sr=1-1'
+    # book_details = amazonBookScraper.scrape_book_data_from_link(book_url)
+    book_records = amazonBookScraper.scrape_books(10)
+    print(f'Total:{len(book_records)}')
+    df = pd.DataFrame(book_records)
+    print(df)
+
+
+
