@@ -9,17 +9,11 @@ class AmazonBookScraper():
     def __init__(self, url) -> None:
         if not isinstance(url, str) or not url:
             raise ValueError('URL must be a nonempty string.')
+        self.scraper_init_done = False
+        self.sorting_done = False
         self.url = url
-        self.driver = None
-
-    def get_book_data(self, num_books, sort_oder) -> list:
-        pass
-
-    def connect_to_link(self):
-        """
-        Initializes Selenium and connects to the starting url
-        """
-        # inits selenium and gets to the link
+        
+        # inits selenium and gets to the url
         self.driver = webdriver.Chrome()
         self.driver.get(self.url)
         time.sleep(PAGE_SLEEP_TIME)
@@ -42,11 +36,15 @@ class AmazonBookScraper():
         xpath = './a'
         sort_criteria[-1].find_element_by_xpath(xpath).click()
         time.sleep(PAGE_SLEEP_TIME)
+        self.sorting_done = True
 
     def go_to_next_page(self):
         """
         Goes to the next page if it not the last page
         """
+        if not self.scraper_init_done:
+            raise Exception('Scraper not initialized.')
+
         xpath = '//span[@class="s-pagination-strip"]'
         pagination_strip = self.driver.find_element_by_xpath(xpath)
         elements = pagination_strip.find_elements_by_xpath('./*')
@@ -64,6 +62,9 @@ class AmazonBookScraper():
         """
         Gets all the links in the current page
         """
+        if not self.scraper_init_done:
+            raise Exception('Scraper not initialized.')
+
         # gets a list of book elements on the current page
         xpath = '//div[@class="s-main-slot s-result-list s-search-results sg-row"]'
         table_element = self.driver.find_element_by_xpath(xpath)
@@ -83,6 +84,8 @@ class AmazonBookScraper():
         Extract only links to first num_books books.
         Considers the current page as the first page.
         """
+        if not self.scraper_init_done:
+            raise Exception('Scraper not initialized.')
 
         # gets links form the first page
         link_list = self.get_page_links()
@@ -92,18 +95,29 @@ class AmazonBookScraper():
             page_links = self.get_page_links()
             link_list.extend(page_links)
 
+        # Closes the browser after extracting all links
+        self.driver.quit()  
+
         # returns only a maximum of num_books links
         if len(link_list) > num_books:
             return link_list[:num_books]
         else:
             return link_list
 
+    # def scrape_book_data_from_link(self, link):
+    #     """
+    #     Returns a json dict with book attributes for a single book
+    #     """
+    #     self.driver.get(link)
+    #     time.sleep(PAGE_SLEEP_TIME)
 
 if __name__ == '__main__':
     url = 'https://www.amazon.com/s?i=stripbooks&rh=n%3A25&fs=true&qid=1643228276&ref=sr_pg_1'
     amazonBookScraper = AmazonBookScraper(url)
-    amazonBookScraper.connect_to_link()
+    amazonBookScraper.scraper_init_done = True
     amazonBookScraper.sort_by_reviews()
     item_links = amazonBookScraper.get_book_links(100)
+    book_url = 'https://www.amazon.com/Midnight-Library-Novel-Matt-Haig/dp/0525559477/ref=sr_1_1?qid=1643367921&s=books&sr=1-1'
+    amazonBookScraper.scrape_book_data_from_link(book_url)
     while True:
         pass
