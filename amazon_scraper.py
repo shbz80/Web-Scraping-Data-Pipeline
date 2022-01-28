@@ -2,15 +2,17 @@ import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 
+# sets the number of seconds to sleep after a click to a new page
+PAGE_SLEEP_TIME = 3     
 
-class AmazonScraper():
+class AmazonBookScraper():
     def __init__(self, url) -> None:
-        if not isinstance(url, str) or not len(url):
+        if not isinstance(url, str) or not url:
             raise ValueError('URL must be a nonempty string.')
         self.url = url
         self.driver = None
 
-    def get_items(self, num_items, sort_oder) -> list:
+    def get_book_data(self, num_books, sort_oder) -> list:
         pass
 
     def connect_to_link(self):
@@ -20,6 +22,7 @@ class AmazonScraper():
         # inits selenium and gets to the link
         self.driver = webdriver.Chrome()
         self.driver.get(self.url)
+        time.sleep(PAGE_SLEEP_TIME)
 
     def sort_by_reviews(self):
         """
@@ -38,7 +41,7 @@ class AmazonScraper():
         sort_criteria = temp_tag.find_elements_by_xpath('./ul/li')
         xpath = './a'
         sort_criteria[-1].find_element_by_xpath(xpath).click()
-        time.sleep(3)
+        time.sleep(PAGE_SLEEP_TIME)
 
     def go_to_next_page(self):
         """
@@ -48,13 +51,13 @@ class AmazonScraper():
         pagination_strip = self.driver.find_element_by_xpath(xpath)
         elements = pagination_strip.find_elements_by_xpath('./*')
         last_element = elements[-1]
-        # if not next page returns False
+        # if no next page returns False
         if last_element.find_elements(By.ID, "aria-disabled"):
             return False
         # else clicks on next and returns True
         else:
             last_element.click()
-            time.sleep(3)
+            time.sleep(PAGE_SLEEP_TIME)
             return True
 
     def get_page_links(self):
@@ -75,9 +78,9 @@ class AmazonScraper():
 
         return book_links
 
-    def get_item_links(self, num_items):
+    def get_book_links(self, num_books):
         """
-        Extract only links to first num_items items.
+        Extract only links to first num_books books.
         Considers the current page as the first page.
         """
 
@@ -85,24 +88,22 @@ class AmazonScraper():
         link_list = self.get_page_links()
 
         # cycles through pages in sequential order and gets page links
-        while self.go_to_next_page() and len(link_list) < num_items:
+        while self.go_to_next_page() and len(link_list) < num_books:
             page_links = self.get_page_links()
             link_list.extend(page_links)
 
-        # returns only a maximum of num_items links
-        if len(link_list) > num_items:
-            return link_list[:num_items]
+        # returns only a maximum of num_books links
+        if len(link_list) > num_books:
+            return link_list[:num_books]
         else:
             return link_list
 
 
 if __name__ == '__main__':
     url = 'https://www.amazon.com/s?i=stripbooks&rh=n%3A25&fs=true&qid=1643228276&ref=sr_pg_1'
-    amazonScraper = AmazonScraper(url)
-    amazonScraper.connect_to_link()
-    amazonScraper.sort_by_reviews()
-    # page_links = amazonScraper.get_page_links()
-    item_links = amazonScraper.get_item_links(100)
-    # is_not_last_page = amazonScraper.go_to_next_page()
+    amazonBookScraper = AmazonBookScraper(url)
+    amazonBookScraper.connect_to_link()
+    amazonBookScraper.sort_by_reviews()
+    item_links = amazonBookScraper.get_book_links(100)
     while True:
         pass
