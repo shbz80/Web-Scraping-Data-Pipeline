@@ -25,20 +25,20 @@ class AmazonScraper():
         """
         Sort the results by number of reviews
         """
-        # click on the sort by dropdown button
+        # clicks on the sort by dropdown button
         xpath = '//span[@class = "a-dropdown-container"]'
         sort_dropdown = self.driver.find_element_by_xpath(xpath)
         xpath = './/span[@class="a-button-text a-declarative"]'
         sort_dropdown_button = sort_dropdown.find_element_by_xpath(xpath)
         sort_dropdown_button.click()
 
-        # click the sort criterion: sort by reviews
+        # clicks on the sort criterion: sort by reviews
         xpath = '//div[@class="a-popover-inner"]'
         temp_tag = self.driver.find_element_by_xpath(xpath)
         sort_criteria = temp_tag.find_elements_by_xpath('./ul/li')
         xpath = './a'
         sort_criteria[-1].find_element_by_xpath(xpath).click()
-        time.sleep(2)
+        time.sleep(3)
 
     def go_to_next_page(self):
         """
@@ -48,26 +48,26 @@ class AmazonScraper():
         pagination_strip = self.driver.find_element_by_xpath(xpath)
         elements = pagination_strip.find_elements_by_xpath('./*')
         last_element = elements[-1]
-        # if not the next page return False
+        # if not next page returns False
         if last_element.find_elements(By.ID, "aria-disabled"):
             return False
-        # else click next and return True
+        # else clicks on next and returns True
         else:
             last_element.click()
-            time.sleep(1)
-            return False
+            time.sleep(3)
+            return True
 
     def get_page_links(self):
         """
         Gets all the links in the current page
         """
-        # get a list of book elements on the current page
+        # gets a list of book elements on the current page
         xpath = '//div[@class="s-main-slot s-result-list s-search-results sg-row"]'
         table_element = self.driver.find_element_by_xpath(xpath)
         xpath = './div[@data-asin]//a[@class="a-link-normal s-no-outline"]'
         books = table_element.find_elements_by_xpath(xpath)
 
-        # extract link from each book element and return a list of links
+        # extracts link from each book element and returns a list of links
         book_links = []
         for book in books:
             book_link = book.get_attribute('href')
@@ -75,13 +75,34 @@ class AmazonScraper():
 
         return book_links
 
+    def get_item_links(self, num_items):
+        """
+        Extract only links to first num_items items.
+        Considers the current page as the first page.
+        """
+
+        # gets links form the first page
+        link_list = self.get_page_links()
+
+        # cycles through pages in sequential order and gets page links
+        while self.go_to_next_page() and len(link_list) < num_items:
+            page_links = self.get_page_links()
+            link_list.extend(page_links)
+
+        # returns only a maximum of num_items links
+        if len(link_list) > num_items:
+            return link_list[:num_items]
+        else:
+            return link_list
+
 
 if __name__ == '__main__':
     url = 'https://www.amazon.com/s?i=stripbooks&rh=n%3A25&fs=true&qid=1643228276&ref=sr_pg_1'
     amazonScraper = AmazonScraper(url)
     amazonScraper.connect_to_link()
     amazonScraper.sort_by_reviews()
-    page_links = amazonScraper.get_page_links()
+    # page_links = amazonScraper.get_page_links()
+    item_links = amazonScraper.get_item_links(100)
     # is_not_last_page = amazonScraper.go_to_next_page()
     while True:
         pass
