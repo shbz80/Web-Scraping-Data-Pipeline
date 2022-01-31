@@ -1,9 +1,15 @@
 import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+import uuid
+import os
+import json
+import urllib.request
+from utils import create_directory_at
+import os
 
 # sets the number of seconds to sleep after a click to a new page
-PAGE_SLEEP_TIME = 6     
+PAGE_SLEEP_TIME = 3     
 
 class AmazonBookScraper():
     def __init__(self, url) -> None:
@@ -122,6 +128,7 @@ class AmazonBookScraper():
         # avoids player's handbooks because they are of different format
         # and will break the logic
         if "Player's Handbook" in element.text:
+            print(f'Skipping {element.text} since it is not in the right format')
             return None
         book_dict["title"] = element.text
 
@@ -167,7 +174,7 @@ class AmazonBookScraper():
                 book_dict["pages"] = pages
 
             # extracts isbn attribute
-            if 'ISBN-10' in items[0].text:
+            if 'ISBN-13' in items[0].text:
                 isbn_string = items[1].text
                 book_dict["isbn"] = isbn_string
 
@@ -253,7 +260,7 @@ class AmazonBookScraper():
 
         return book_dict
 
-    def scrape_books(self, num_books):
+    def scrape_books(self, num_books, save_data=False):
         """
         Collects num_books book links and then scraped data from 
         each link.
@@ -268,11 +275,31 @@ class AmazonBookScraper():
         # gets all links for the required number of books
         book_links = self.get_book_links(num_books)
 
+        if save_data:
+            # creates a folder raw_data at the root
+            # TODO: catch exception?
+            # TODO: change to the project folder
+            cwd = os.getcwd()
+            path_to_root_data = cwd + '/raw_data/'
+            create_directory_at(path_to_root_data)
+
         # prepares a list of scraped book records
         scrape_list = []
         count = 0
         for book_link in book_links:
+            # get the book detail from the link
             book_dict = self.scrape_book_data_from_link(book_link)
+            if save_data:
+                # TODO: how to avoid duplicate books?
+                # save each book detail as a json object
+                path_to_record = path_to_root_data + book_dict['isbn']
+                create_directory_at(path_to_record)
+                with open(f"{path_to_record}/data.json", mode='w') as f:
+                    json.dump(book_dict, f)
+                # save the cover page image file in the record directory
+                book_image_link = book_dict['image_link']
+                local_filename, headers = urllib.request.urlretrieve(
+                    book_image_link, filename=path_to_record+'/0.jpg')
             # add to list only if valid record
             if book_dict: scrape_list.append(book_dict)
             count += 1
@@ -291,7 +318,7 @@ if __name__ == '__main__':
     # item_links = amazonBookScraper.get_book_links(100)
     # book_url = 'https://www.amazon.com/Midnight-Library-Novel-Matt-Haig/dp/0525559477/ref=sr_1_1?qid=1643367921&s=books&sr=1-1'
     # book_details = amazonBookScraper.scrape_book_data_from_link(book_url)
-    book_records = amazonBookScraper.scrape_books(5)
+    book_records = amazonBookScraper.scrape_books(100)
     print(f'Total:{len(book_records)}')
     df = pd.DataFrame(book_records)
     print(df)
