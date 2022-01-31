@@ -3,7 +3,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 
 # sets the number of seconds to sleep after a click to a new page
-PAGE_SLEEP_TIME = 2     
+PAGE_SLEEP_TIME = 6     
 
 class AmazonBookScraper():
     def __init__(self, url) -> None:
@@ -119,6 +119,8 @@ class AmazonBookScraper():
         # gets the book title
         xpath = '//span[@id="productTitle"]'
         element = self.driver.find_element_by_xpath(xpath)
+        # avoids player's handbooks because they are of different format
+        # and will break the logic
         if "Player's Handbook" in element.text:
             return None
         book_dict["title"] = element.text
@@ -153,8 +155,8 @@ class AmazonBookScraper():
                         break
                 else:
                     raise ValueError('No date value.')
-                # removes a comma
                 date = date_string[start_idx+1:-1]
+                # removes a comma
                 date = "".join(date.split(","))
                 book_dict["date"] = date
 
@@ -168,59 +170,82 @@ class AmazonBookScraper():
             if 'ISBN-10' in items[0].text:
                 isbn_string = items[1].text
                 book_dict["isbn"] = isbn_string
+
+        # considers ISBN to be the unique id, so it is a must
+        if book_dict["isbn"] is None:
+            raise Exception(f"No ISBN for {book_dict['title']}")
         
         # gets product features
-        xpath = '//div[@id="detailBulletsWrapper_feature_div"]/ul'
-        elements = self.driver.find_elements_by_xpath(xpath)
-        best_seller_idx, review_rating_idx = 0, 1
+        book_dict["best_seller_rank"] = None
+        book_dict["review_rating"] = None
+        book_dict["review_count"] = None
 
-        # gets best selling rating
-        xpath = './li/span'
-        best_seller_string = elements[best_seller_idx].find_element_by_xpath(xpath)
-        best_seller_string = best_seller_string.text
-        try:
-            start_idx = best_seller_string.index("#") + 1
-        except ValueError:
-            print('Cannot find best seller ranking')
-        idx = start_idx
-        while best_seller_string[idx] != " ":
-            idx += 1
-        best_seller_string = best_seller_string[start_idx:idx]
-        best_seller_string = "".join(best_seller_string.split(","))
-        best_seller_rank = int(best_seller_string)
-        book_dict["best_seller_rank"] = best_seller_rank
-        
-        # gets reviwer rating
-        xpath = './/span[@class="reviewCountTextLinkedHistogram noUnderline"]'
-        element = elements[review_rating_idx].find_element_by_xpath(xpath)
-        review_rating_string = element.get_attribute("title")
-        review_rating = float(review_rating_string[:3])
-        book_dict["review_rating"] = review_rating
+        try: 
+            xpath = '//div[@id="detailBulletsWrapper_feature_div"]/ul'
+            elements = self.driver.find_elements_by_xpath(xpath)
+            for element in elements:
+                # gets best selling rating
+                xpath = './li/span'
+                best_seller_string = element.find_element_by_xpath(
+                    xpath)
+                best_seller_string = best_seller_string.text
+                try:
+                    start_idx = best_seller_string.index("#") + 1
+                    idx = start_idx
+                    while best_seller_string[idx] != " ":
+                        idx += 1
+                    best_seller_string = best_seller_string[start_idx:idx]
+                    best_seller_string = "".join(best_seller_string.split(","))
+                    best_seller_rank = int(best_seller_string)
+                    book_dict["best_seller_rank"] = best_seller_rank
+                except: 
+                    pass
+            
+                # gets reviwer rating
+                try:
+                    xpath = './/span[@class="reviewCountTextLinkedHistogram noUnderline"]'
+                    rating_element = element.find_element_by_xpath(xpath)
+                    review_rating_string = rating_element.get_attribute(
+                        "title")
+                    review_rating = float(review_rating_string[:3])
+                    book_dict["review_rating"] = review_rating
+                except:
+                    pass
 
-        # gets review count
-        xpath = './/span[@id="acrCustomerReviewText"]'
-        element = elements[review_rating_idx].find_element_by_xpath(xpath)
-        review_count_string = element.text
-        review_count_string = review_count_string.split(" ")[0]
-        review_count_string = "".join(review_count_string.split(","))
-        review_count = int(review_count_string)
-        book_dict["review_count"] = review_count
+                # gets review count
+                try:
+                    xpath = './/span[@id="acrCustomerReviewText"]'
+                    count_element = element.find_element_by_xpath(xpath)
+                    review_count_string = count_element.text
+                    review_count_string = review_count_string.split(" ")[0]
+                    review_count_string = "".join(review_count_string.split(","))
+                    review_count = int(review_count_string)
+                    book_dict["review_count"] = review_count
+                except:
+                    pass
+        except:
+            pass
 
         # gets cover page image link
-        xpath = '//div[@id="main-image-container"]//img'
-        element = self.driver.find_element_by_xpath(xpath)
-        image_link = element.get_attribute("src")
-        book_dict["image_link"] = image_link
+        book_dict["image_link"] = None
+        try:
+            xpath = '//div[@id="main-image-container"]//img'
+            element = self.driver.find_element_by_xpath(xpath)
+            image_link = element.get_attribute("src")
+            book_dict["image_link"] = image_link
+        except:
+            pass
 
         # gets book description
-        xpath_1 = '//div[@data-a-expander-name="book_description_expander"]'
-        xpath_2 = '/div/span'
+        book_dict["description"] = None
         try:
+            xpath_1 = '//div[@data-a-expander-name="book_description_expander"]'
+            xpath_2 = '/div/span'
             element = self.driver.find_element_by_xpath(xpath_1 + xpath_2)
             description = element.text
+            book_dict["description"] = description
         except:
-            description = None
-        book_dict["description"] = description
+            pass
 
         return book_dict
 
@@ -262,7 +287,7 @@ if __name__ == '__main__':
     # item_links = amazonBookScraper.get_book_links(100)
     # book_url = 'https://www.amazon.com/Midnight-Library-Novel-Matt-Haig/dp/0525559477/ref=sr_1_1?qid=1643367921&s=books&sr=1-1'
     # book_details = amazonBookScraper.scrape_book_data_from_link(book_url)
-    book_records = amazonBookScraper.scrape_books(10)
+    book_records = amazonBookScraper.scrape_books(5)
     print(f'Total:{len(book_records)}')
     df = pd.DataFrame(book_records)
     print(df)
