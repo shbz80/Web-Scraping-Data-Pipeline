@@ -247,6 +247,10 @@ class AmazonBookScraper():
         except:
             pass
 
+        # adds a globally unique identifier for each book
+        uuid_data = uuid.uuid4()
+        book_dict['uuid'] = str(uuid_data)
+
         return book_dict
 
     def scrape_books(self, num_books):
