@@ -14,15 +14,19 @@ class AmazonBookScraper():
     """[summary]
     """    
     def __init__(self, url) -> None:
-        if not isinstance(url, str) or not url:
-            raise ValueError('URL must be a nonempty string.')
         self.scraper_init_done = False
         self.sorting_done = False
         self.url = url
         
-        # inits selenium and gets to the url
-        self.driver = webdriver.Chrome()
-        self.driver.get(self.url)
+        # init selenium and get to the url
+        try:
+            self.driver = webdriver.Chrome()
+        except:
+            print('Selenium driver error')
+        try:
+            self.driver.get(self.url)
+        except:
+            print('Invalid url')
         time.sleep(PAGE_SLEEP_TIME)
 
     def sort_by_reviews(self):
