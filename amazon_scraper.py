@@ -117,6 +117,25 @@ class AmazonBookScraper():
         else:
             return book_link_list
 
+    def __get_book_title_from_link(self, link, driver):
+        xpath = '//span[@id="productTitle"]'
+        element = driver.find_element_by_xpath(xpath)
+        # avoids player's handbooks because they are of different format
+        # and will break the logic
+        if "Player's Handbook" in element.text:
+            print(
+                f'Skipping {element.text} since it is not in the right format')
+            return None
+        return element.text
+
+    def __get_book_author_from_link(self, link, driver):
+        xpath_1 = '//div[@id="authorFollow_feature_div"]'
+        xpath_2 = '/div[@class="a-row a-spacing-top-small"]'
+        xpath_3 = '/div[@class="a-column a-span4 authorNameColumn"]/a'
+        elements = driver.find_elements_by_xpath(xpath_1+xpath_2+xpath_3)
+        author_names = ",".join([element.text for element in elements])
+        return author_names
+
     def scrape_book_data_from_link(self, link):
         """
         Returns a dict with book attributes for a single book
@@ -131,22 +150,11 @@ class AmazonBookScraper():
 
         book_dict = {}
 
-        # gets the book title
-        xpath = '//span[@id="productTitle"]'
-        element = self.driver.find_element_by_xpath(xpath)
-        # avoids player's handbooks because they are of different format
-        # and will break the logic
-        if "Player's Handbook" in element.text:
-            print(f'Skipping {element.text} since it is not in the right format')
-            return None
-        book_dict["title"] = element.text
+        # get the book title
+        book_dict["title"] = self.__get_book_title_from_link(link, self.driver)
 
-        # gets the author name
-        xpath_1 = '//div[@id="authorFollow_feature_div"]'
-        xpath_2 = '/div[@class="a-row a-spacing-top-small"]'
-        xpath_3 = '/div[@class="a-column a-span4 authorNameColumn"]/a'
-        elements = self.driver.find_elements_by_xpath(xpath_1+xpath_2+xpath_3)
-        book_dict["author(s)"] = ",".join([element.text for element in elements])
+        # get the author names
+        book_dict["author(s)"] = self.__get_book_author_from_link(link, self.driver)
 
         # gets some attributes
         xpath = '//div[@id="detailBullets_feature_div"]/ul/li'
