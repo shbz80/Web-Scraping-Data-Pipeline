@@ -136,6 +136,54 @@ class AmazonBookScraper():
         author_names = ",".join([element.text for element in elements])
         return author_names
 
+    def __get_book_attribute_elements_from_link(self, link, driver):
+        xpath = '//div[@id="detailBullets_feature_div"]/ul/li'
+        elements = self.driver.find_elements_by_xpath(xpath)
+        return elements
+
+    def __extract_date_attribute(self, elements):
+        # return None if date attribute not found
+        date = None
+        for element in elements:
+            items = element.find_elements_by_xpath('./span/span')
+            if "Publisher" in items[0].text:
+                date_string = items[1].text
+                # expects the date feature encolsed in paranthesis towards right
+                if date_string[-1] != ")":
+                    raise ValueError('No date value')
+                start_idx = 0
+                # searches backwards to find the opening bracket
+                for i in range(len(date_string)-1, -1, -1):
+                    if date_string[i] == "(":
+                        start_idx = i
+                        break
+                else:
+                    raise ValueError('No date value.')
+                date = date_string[start_idx+1:-1]
+                # removes a comma
+                date = "".join(date.split(","))
+        return date
+    
+    def __extract_pages_attribute(self, elements):
+        pages = None
+        for element in elements:
+            items = element.find_elements_by_xpath('./span/span')
+            if "pages" in items[1].text:
+                pages_string = items[1].text
+                pages = int(pages_string.split(" ")[0])
+        return pages
+
+    def __extract_isbn_attribute(self, elements):
+        isbn = None
+        for element in elements:
+            items = element.find_elements_by_xpath('./span/span')
+            if 'ISBN-13' in items[0].text:
+                isbn = items[1].text
+        # ISBN-13 attribute is mandatory because it our unique id
+        if isbn is None:
+            raise Exception("Missing ISBN-13 number")
+        return isbn
+
     def scrape_book_data_from_link(self, link):
         """
         Returns a dict with book attributes for a single book
@@ -156,49 +204,20 @@ class AmazonBookScraper():
         # get the author names
         book_dict["author(s)"] = self.__get_book_author_from_link(link, self.driver)
 
-        # gets some attributes
-        xpath = '//div[@id="detailBullets_feature_div"]/ul/li'
-        elements = self.driver.find_elements_by_xpath(xpath)
-        book_dict["date"] = None
-        book_dict["pages"] = None
-        book_dict["isbn"] = None
-        for element in elements:
-            items = element.find_elements_by_xpath('./span/span')
-            
-            # extracts date attribute
-            if "Publisher" in items[0].text:
-                date_string = items[1].text
-                # expects the date feature encolsed in paranthesis towards right
-                if date_string[-1] != ")":
-                    raise ValueError('No date value')
-                start_idx = 0
-                # searches backwards to find the opening bracket
-                for i in range(len(date_string)-1, -1, -1):
-                    if date_string[i] == "(":
-                        start_idx = i
-                        break
-                else:
-                    raise ValueError('No date value.')
-                date = date_string[start_idx+1:-1]
-                # removes a comma
-                date = "".join(date.split(","))
-                book_dict["date"] = date
+        # get book attribute elements
+        # this includes date, pages and ISBN-13 number
+        elements = self.__get_book_attribute_elements_from_link(link, self.driver)
 
-            # extracts pages attribute
-            if "pages" in items[1].text:
-                pages_string = items[1].text
-                pages = int(pages_string.split(" ")[0])
-                book_dict["pages"] = pages
+        # extract the date attribute from book attribute elements if it exists
+        book_dict["date"] = self.__extract_date_attribute(elements)
 
-            # extracts isbn attribute
-            if 'ISBN-13' in items[0].text:
-                isbn_string = items[1].text
-                book_dict["isbn"] = isbn_string
+        # extract the pages attribute from book attribute elements if it exists
+        book_dict["pages"] = self.__extract_pages_attribute(elements)
 
-        # considers ISBN to be the unique id, so it is a must
-        if book_dict["isbn"] is None:
-            raise Exception(f"No ISBN for {book_dict['title']}")
-        
+        # extract the ISBN-13 attribute from book attribute elements
+        # raises exception if it is missing 
+        book_dict["isbn"] = self.__extract_isbn_attribute(elements)
+
         # gets product features
         book_dict["best_seller_rank"] = None
         book_dict["review_rating"] = None
@@ -344,6 +363,9 @@ if __name__ == '__main__':
     print(f'Total:{len(book_records)}')
     df = pd.DataFrame(book_records)
     print(df)
+    print(df['date'])
+    print(df['pages'])
+    print(df['isbn'])
 
 
 
