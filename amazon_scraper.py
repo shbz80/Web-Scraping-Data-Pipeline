@@ -15,7 +15,6 @@ class AmazonBookScraper():
     """    
     def __init__(self, url) -> None:
         self.scraper_init_done = False
-        self.sorting_done = False
         self.url = url
         
         # init selenium and get to the url
@@ -34,56 +33,61 @@ class AmazonBookScraper():
         Sort the results by number of reviews
         TODO: recieve the sort criterion as argument
         """
-        # clicks on the sort by dropdown button
-        xpath = '//span[@class = "a-dropdown-container"]'
-        sort_dropdown = self.driver.find_element_by_xpath(xpath)
-        xpath = './/span[@class="a-button-text a-declarative"]'
-        sort_dropdown_button = sort_dropdown.find_element_by_xpath(xpath)
-        sort_dropdown_button.click()
+        # click on the sort by dropdown button
+        try:
+            xpath = '//span[@class = "a-dropdown-container"]'
+            sort_dropdown = self.driver.find_element_by_xpath(xpath)
+            xpath = './/span[@class="a-button-text a-declarative"]'
+            sort_dropdown_button = sort_dropdown.find_element_by_xpath(xpath)
+            sort_dropdown_button.click()
+        except:
+            print('Failed to click on sort by dropdown')
 
-        # clicks on the sort criterion: sort by reviews
-        xpath = '//div[@class="a-popover-inner"]'
-        temp_tag = self.driver.find_element_by_xpath(xpath)
-        sort_criteria = temp_tag.find_elements_by_xpath('./ul/li')
-        xpath = './a'
-        sort_criteria[-1].find_element_by_xpath(xpath).click()
-        time.sleep(PAGE_SLEEP_TIME)
-        self.sorting_done = True
+        # click on the sort criterion: sort by reviews
+        try:
+            xpath = '//div[@class="a-popover-inner"]'
+            temp_tag = self.driver.find_element_by_xpath(xpath)
+            sort_criteria = temp_tag.find_elements_by_xpath('./ul/li')
+            xpath = './a'
+            sort_criteria[-1].find_element_by_xpath(xpath).click()
+            time.sleep(PAGE_SLEEP_TIME)
+        except:
+            print('Failed to click on the sort option')
 
-    def go_to_next_page(self):
+
+    def __go_to_next_page(self):
         """
         Goes to the next page if it not the last page
         """
         if not self.scraper_init_done:
             raise Exception('Scraper not initialized.')
 
+        # if no next page returns False else clicks on next and returns True
         xpath = '//span[@class="s-pagination-strip"]'
         pagination_strip = self.driver.find_element_by_xpath(xpath)
         elements = pagination_strip.find_elements_by_xpath('./*')
-        last_element = elements[-1]
-        # if no next page returns False
+        last_element = elements[-1] 
         if last_element.find_elements(By.ID, "aria-disabled"):
             return False
-        # else clicks on next and returns True
         else:
             last_element.click()
             time.sleep(PAGE_SLEEP_TIME)
             return True
 
-    def get_page_links(self):
+    def __get_book_links_from_current_page(self):
         """
         Gets all the links in the current page
         """
         if not self.scraper_init_done:
             raise Exception('Scraper not initialized.')
 
-        # gets a list of book elements on the current page
+        # get a list of book elements on the current page
         xpath = '//div[@class="s-main-slot s-result-list s-search-results sg-row"]'
         table_element = self.driver.find_element_by_xpath(xpath)
         xpath = './div[@data-asin]//a[@class="a-link-normal s-no-outline"]'
         books = table_element.find_elements_by_xpath(xpath)
 
-        # extracts link from each book element and returns a list of links
+        # extract link from each book element and returns a list of links
         book_links = []
         for book in books:
             book_link = book.get_attribute('href')
@@ -93,28 +97,25 @@ class AmazonBookScraper():
 
     def get_book_links(self, num_books):
         """
-        Extract only links to first num_books books.
+        Extract links of first num_books books.
         Considers the current page as the first page.
         """
         if not self.scraper_init_done:
             raise Exception('Scraper not initialized.')
 
-        # gets links form the first page
-        link_list = self.get_page_links()
+        # get links form the first page
+        book_link_list = self.__get_book_links_from_current_page()
 
-        # cycles through pages in sequential order and gets page links
-        while self.go_to_next_page() and len(link_list) < num_books:
-            page_links = self.get_page_links()
-            link_list.extend(page_links)
-
-        # Closes the browser after extracting all links
-        # self.driver.quit()  
+        # cycle through pages in sequential order and get page links
+        while self.__go_to_next_page() and len(book_link_list) < num_books:
+            book_links_on_page = self.__get_book_links_from_current_page()
+            book_link_list.extend(book_links_on_page)
 
         # returns only a maximum of num_books links
-        if len(link_list) > num_books:
-            return link_list[:num_books]
+        if len(book_link_list) > num_books:
+            return book_link_list[:num_books]
         else:
-            return link_list
+            return book_link_list
 
     def scrape_book_data_from_link(self, link):
         """
@@ -122,8 +123,11 @@ class AmazonBookScraper():
         TODO: consider breaking this function into smaller pieces
         """
         # opens the book page
-        self.driver.get(link)
-        time.sleep(PAGE_SLEEP_TIME)
+        try:
+            self.driver.get(link)
+            time.sleep(PAGE_SLEEP_TIME)
+        except:
+            print('Could not open the book url.')
 
         book_dict = {}
 
