@@ -233,12 +233,35 @@ class AmazonBookScraper():
                 pass
         return review_count
 
+    def __get_cover_page_image(self, driver):
+        image_link = None
+        try:
+            xpath = '//div[@id="main-image-container"]//img'
+            element = driver.find_element_by_xpath(xpath)
+            image_link = element.get_attribute("src")
+        except:
+            pass
+        return image_link
+
+    def __get_book_description(self, driver):
+        description = None
+        try:
+            xpath_1 = '//div[@data-a-expander-name="book_description_expander"]'
+            xpath_2 = '/div/span'
+            element = driver.find_element_by_xpath(xpath_1 + xpath_2)
+            description = element.text
+        except:
+            pass
+        return description
+
     def scrape_book_data_from_link(self, link):
         """
         Returns a dict with book attributes for a single book
-        TODO: consider breaking this function into smaller pieces
         """
-        # opens the book page
+        if not self.scraper_init_done:
+            raise Exception('Scraper not initialized.')
+
+        # open the book page
         try:
             self.driver.get(link)
             time.sleep(PAGE_SLEEP_TIME)
@@ -280,30 +303,14 @@ class AmazonBookScraper():
         # extract the review count from product feature elements if it exists
         book_dict["review_count"] = self.__extract_review_count(elements)
 
-        # gets cover page image link
-        book_dict["image_link"] = None
-        try:
-            xpath = '//div[@id="main-image-container"]//img'
-            element = self.driver.find_element_by_xpath(xpath)
-            image_link = element.get_attribute("src")
-            book_dict["image_link"] = image_link
-        except:
-            pass
+        # get the cover page image for the book
+        book_dict["image_link"] = self.__get_cover_page_image(self.driver)
 
-        # gets book description
-        book_dict["description"] = None
-        try:
-            xpath_1 = '//div[@data-a-expander-name="book_description_expander"]'
-            xpath_2 = '/div/span'
-            element = self.driver.find_element_by_xpath(xpath_1 + xpath_2)
-            description = element.text
-            book_dict["description"] = description
-        except:
-            pass
+        # get the book description text
+        book_dict["description"] = self.__get_book_description(self.driver)
 
-        # adds a globally unique identifier for each book
-        uuid_data = uuid.uuid4()
-        book_dict['uuid'] = str(uuid_data)
+        # add a globally unique identifier for each book
+        book_dict['uuid'] = str(uuid.uuid4())
 
         return book_dict
 
@@ -314,7 +321,8 @@ class AmazonBookScraper():
         Returns a list of dictionaries, with a dcitionay containing
         data of a single book
         """
-        # sorts the books by a criterion 
+        # sorts the books by the criterion: number of reviews
+        #TODO: accept the sort criterion as a parameter
         self.sort_by_reviews()
 
         self.scraper_init_done = True
@@ -382,6 +390,9 @@ if __name__ == '__main__':
     print(df['best_seller_rank'])
     print(df['review_rating'])
     print(df['review_count'])
+    print(df['image_link'])
+    print(df['description'])
+    print(df['uuid'])
 
 
 
