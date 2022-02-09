@@ -8,7 +8,7 @@ import urllib.request
 import os
 
 # sets the number of seconds to sleep after a click to a new page
-PAGE_SLEEP_TIME = 3     
+PAGE_SLEEP_TIME = 2     
 
 class AmazonBookScraper():
     """[summary]
@@ -117,7 +117,7 @@ class AmazonBookScraper():
         else:
             return book_link_list
 
-    def __get_book_title_from_link(self, link, driver):
+    def __get_book_title_from_link(self, driver):
         xpath = '//span[@id="productTitle"]'
         element = driver.find_element_by_xpath(xpath)
         # avoids player's handbooks because they are of different format
@@ -128,7 +128,7 @@ class AmazonBookScraper():
             return None
         return element.text
 
-    def __get_book_author_from_link(self, link, driver):
+    def __get_book_author_from_link(self, driver):
         xpath_1 = '//div[@id="authorFollow_feature_div"]'
         xpath_2 = '/div[@class="a-row a-spacing-top-small"]'
         xpath_3 = '/div[@class="a-column a-span4 authorNameColumn"]/a'
@@ -136,9 +136,9 @@ class AmazonBookScraper():
         author_names = ",".join([element.text for element in elements])
         return author_names
 
-    def __get_book_attribute_elements_from_link(self, link, driver):
+    def __get_book_attribute_elements_from_link(self, driver):
         xpath = '//div[@id="detailBullets_feature_div"]/ul/li'
-        elements = self.driver.find_elements_by_xpath(xpath)
+        elements = driver.find_elements_by_xpath(xpath)
         return elements
 
     def __extract_date_attribute(self, elements):
@@ -184,6 +184,55 @@ class AmazonBookScraper():
             raise Exception("Missing ISBN-13 number")
         return isbn
 
+    def __get_product_feature_elements_from_link(self, driver):
+        xpath = '//div[@id="detailBulletsWrapper_feature_div"]/ul'
+        elements = driver.find_elements_by_xpath(xpath)
+        return elements
+
+    def __extract_best_seller_ranking(self, elements):
+        best_seller_rank = None
+        for element in elements:
+            try:
+                xpath = './li/span'
+                best_seller_string = element.find_element_by_xpath(xpath)
+                best_seller_string = best_seller_string.text
+                start_idx = best_seller_string.index("#") + 1
+                idx = start_idx
+                while best_seller_string[idx] != " ":
+                    idx += 1
+                best_seller_string = best_seller_string[start_idx:idx]
+                best_seller_string = "".join(best_seller_string.split(","))
+                best_seller_rank = int(best_seller_string)
+            except:
+                pass
+        return best_seller_rank
+
+    def __extract_review_ranting(self, elements):
+        review_rating = None
+        for element in elements:
+            try:
+                xpath = './/span[@class="reviewCountTextLinkedHistogram noUnderline"]'
+                rating_element = element.find_element_by_xpath(xpath)
+                review_rating_string = rating_element.get_attribute("title")
+                review_rating = float(review_rating_string[:3])
+            except:
+                pass
+        return review_rating
+
+    def __extract_review_count(self, elements):
+        review_count = None
+        for element in elements:
+            try:
+                xpath = './/span[@id="acrCustomerReviewText"]'
+                count_element = element.find_element_by_xpath(xpath)
+                review_count_string = count_element.text
+                review_count_string = review_count_string.split(" ")[0]
+                review_count_string = "".join(review_count_string.split(","))
+                review_count = int(review_count_string)
+            except:
+                pass
+        return review_count
+
     def scrape_book_data_from_link(self, link):
         """
         Returns a dict with book attributes for a single book
@@ -199,14 +248,14 @@ class AmazonBookScraper():
         book_dict = {}
 
         # get the book title
-        book_dict["title"] = self.__get_book_title_from_link(link, self.driver)
+        book_dict["title"] = self.__get_book_title_from_link(self.driver)
 
         # get the author names
-        book_dict["author(s)"] = self.__get_book_author_from_link(link, self.driver)
+        book_dict["author(s)"] = self.__get_book_author_from_link(self.driver)
 
         # get book attribute elements
         # this includes date, pages and ISBN-13 number
-        elements = self.__get_book_attribute_elements_from_link(link, self.driver)
+        elements = self.__get_book_attribute_elements_from_link(self.driver)
 
         # extract the date attribute from book attribute elements if it exists
         book_dict["date"] = self.__extract_date_attribute(elements)
@@ -218,56 +267,18 @@ class AmazonBookScraper():
         # raises exception if it is missing 
         book_dict["isbn"] = self.__extract_isbn_attribute(elements)
 
-        # gets product features
-        book_dict["best_seller_rank"] = None
-        book_dict["review_rating"] = None
-        book_dict["review_count"] = None
+        # get product feature elements
+        # this includes best seller rank, review rating and review count
+        elements = self.__get_product_feature_elements_from_link(self.driver)
 
-        try: 
-            xpath = '//div[@id="detailBulletsWrapper_feature_div"]/ul'
-            elements = self.driver.find_elements_by_xpath(xpath)
-            for element in elements:
-                # gets best selling rating
-                xpath = './li/span'
-                best_seller_string = element.find_element_by_xpath(
-                    xpath)
-                best_seller_string = best_seller_string.text
-                try:
-                    start_idx = best_seller_string.index("#") + 1
-                    idx = start_idx
-                    while best_seller_string[idx] != " ":
-                        idx += 1
-                    best_seller_string = best_seller_string[start_idx:idx]
-                    best_seller_string = "".join(best_seller_string.split(","))
-                    best_seller_rank = int(best_seller_string)
-                    book_dict["best_seller_rank"] = best_seller_rank
-                except: 
-                    pass
-            
-                # gets reviwer rating
-                try:
-                    xpath = './/span[@class="reviewCountTextLinkedHistogram noUnderline"]'
-                    rating_element = element.find_element_by_xpath(xpath)
-                    review_rating_string = rating_element.get_attribute(
-                        "title")
-                    review_rating = float(review_rating_string[:3])
-                    book_dict["review_rating"] = review_rating
-                except:
-                    pass
+        # extract the best seller rank from product feature elements if it exists
+        book_dict["best_seller_rank"] = self.__extract_best_seller_ranking(elements)
 
-                # gets review count
-                try:
-                    xpath = './/span[@id="acrCustomerReviewText"]'
-                    count_element = element.find_element_by_xpath(xpath)
-                    review_count_string = count_element.text
-                    review_count_string = review_count_string.split(" ")[0]
-                    review_count_string = "".join(review_count_string.split(","))
-                    review_count = int(review_count_string)
-                    book_dict["review_count"] = review_count
-                except:
-                    pass
-        except:
-            pass
+        # extract the review rating from product feature elements if it exists
+        book_dict["review_rating"] = self.__extract_review_ranting(elements)
+
+        # extract the review count from product feature elements if it exists
+        book_dict["review_count"] = self.__extract_review_count(elements)
 
         # gets cover page image link
         book_dict["image_link"] = None
@@ -363,9 +374,14 @@ if __name__ == '__main__':
     print(f'Total:{len(book_records)}')
     df = pd.DataFrame(book_records)
     print(df)
+    print(df['title'])
+    print(df['author(s)'])
     print(df['date'])
     print(df['pages'])
     print(df['isbn'])
+    print(df['best_seller_rank'])
+    print(df['review_rating'])
+    print(df['review_count'])
 
 
 
