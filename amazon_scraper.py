@@ -1,45 +1,73 @@
+"""This module implements a scraper class for scraping book details from 
+a specific category in Amazon.
+"""
+from ctypes import Union
+import os
+from typing import Any, Union
 import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 import uuid
 import json
 import urllib.request
-import os
 from utils import create_dir_if_not_exists
 
-# sets the number of seconds to sleep after a click to a new page
-PAGE_SLEEP_TIME = 3
+# the number of seconds to sleep after a click to a new page
+PAGE_SLEEP_TIME = 2
 
 class AmazonBookScraper():
-    """[summary]
+    """Scrapes any number of books from a ctaegory after sorting by a 
+    specific criterion.
+
+    Each book record consists of title, authors' name, publication date,
+    cover page image, description, number of pages, isbn number, bestseller 
+    rank, review rating, review count and uuidv4.
+
+    The book category is hardcoded to "science finction and fantasy"
+
+    The sort criterion is hardcoded to number of reviews (descending)
     """    
-    def __init__(self, url) -> None:
-        self.scraper_init_done = False
-        self.url = url
+
+    def __init__(self, url: str) -> None:
+        """Inits Selenium driver and gets to the given url
+
+        Args:
+            url (str): expects the url to the required book category
+        """
+        self._scraper_init_done = False
+        self._url = url
         
-        # init selenium and get to the url
+        # init Selenium and get to the url
         try:
-            self.driver = webdriver.Chrome()
+            self._driver = webdriver.Chrome()
         except:
             print('Selenium driver error')
         try:
-            self.driver.get(self.url)
+            self._driver.get(self._url)
         except:
             print('Invalid url')
         time.sleep(PAGE_SLEEP_TIME)
 
-    def scrape_books(self, num_books, save_data=False):
-        """
-        Collects num_books book links and then scrape data from 
-        each link.
-        Returns a list of dictionaries, with a dcitionay containing
-        record of a single book
-        """
-        # sorts the books by the criterion: number of reviews
-        # TODO: accept the sort criterion as a parameter
-        self.sort_by_reviews()
+    def scrape_books(
+            self, num_books: int, 
+            save_data: bool=False) -> list[dict[Any, Any]]:
+        """The main method that acquires the required number of
+        book records
 
-        self.scraper_init_done = True
+        Sorts the books by the criterion: number of reviews.
+        TODO: accept the sort criterion as a parameter
+
+        Args:
+            num_books (int): the number of books to acquire
+            save_data (bool, optional): flag to save data locally.
+                                        Defaults to False.
+
+        Returns:
+            list[dict[Any, Any]]: list of num_books book records
+        """
+        self._sort_by_reviews()
+
+        self._scraper_init_done = True
 
         # get the links for the required number of books
         book_links = self.get_book_links(num_books)
@@ -72,15 +100,14 @@ class AmazonBookScraper():
         # return the list of book records (dicts)
         return scraped_record_list
     
-    def sort_by_reviews(self):
-        """
-        Sort the results by number of reviews
+    def _sort_by_reviews(self) -> None:
+        """Sort the books by the number of reviews
         TODO: recieve the sort criterion as argument
         """
         # click on the sort by dropdown button
         try:
             xpath = '//span[@class = "a-dropdown-container"]'
-            sort_dropdown = self.driver.find_element_by_xpath(xpath)
+            sort_dropdown = self._driver.find_element_by_xpath(xpath)
             xpath = './/span[@class="a-button-text a-declarative"]'
             sort_dropdown_button = sort_dropdown.find_element_by_xpath(xpath)
             sort_dropdown_button.click()
@@ -90,7 +117,7 @@ class AmazonBookScraper():
         # click on the sort criterion: sort by reviews
         try:
             xpath = '//div[@class="a-popover-inner"]'
-            temp_tag = self.driver.find_element_by_xpath(xpath)
+            temp_tag = self._driver.find_element_by_xpath(xpath)
             sort_criteria = temp_tag.find_elements_by_xpath('./ul/li')
             xpath = './a'
             sort_criteria[-1].find_element_by_xpath(xpath).click()
@@ -98,12 +125,19 @@ class AmazonBookScraper():
         except:
             print('Failed to click on the sort option')
 
-    def get_book_links(self, num_books):
+    def get_book_links(self, num_books: int) -> list[str]:
+        """Acquires num_books number of book urls from the sorted book listing
+
+        Args:
+            num_books (int): the required number of books
+
+        Raises:
+            Exception: if sraper is not initialized
+
+        Returns:
+            list[str]: list of book webpage urls
         """
-        Extract links of first num_books books.
-        Considers the current page as the first page.
-        """
-        if not self.scraper_init_done:
+        if not self._scraper_init_done:
             raise Exception('Scraper not initialized.')
 
         # get links form the first page
@@ -120,16 +154,21 @@ class AmazonBookScraper():
         else:
             return book_link_list
 
-    def scrape_book_data_from_link(self, link):
+    def scrape_book_data_from_link(self, link: str) -> Union[dict[str, Any], None]:
+        """Returns a dict with book attributes for a single book
+
+        Args:
+            link (str): url to the book webpage
+
+        Returns:
+            Union[dict[str, Any], None]: dict record of a valid book
         """
-        Returns a dict with book attributes for a single book
-        """
-        if not self.scraper_init_done:
+        if not self._scraper_init_done:
             raise Exception('Scraper not initialized.')
 
         # open the book page
         try:
-            self.driver.get(link)
+            self._driver.get(link)
             time.sleep(PAGE_SLEEP_TIME)
         except:
             print('Could not open the book url.')
@@ -137,17 +176,17 @@ class AmazonBookScraper():
         book_record = {}
 
         # get the book title
-        book_record["title"] = self._get_book_title(self.driver)
+        book_record["title"] = self._get_book_title(self._driver)
         # skip this record item if it is not in a valid format
         if book_record['title'] is None:
             return None
 
         # get the author names
-        book_record["author(s)"] = self._get_book_author(self.driver)
+        book_record["author(s)"] = self._get_book_author(self._driver)
 
         # get book attribute elements
         # this includes date, pages and ISBN-13 number
-        elements = self._get_book_attribute_elements(self.driver)
+        elements = self._get_book_attribute_elements(self._driver)
 
         # extract the ISBN attribute from book attribute elements
         book_record["isbn"] = self._extract_isbn_attribute(elements)
@@ -163,23 +202,23 @@ class AmazonBookScraper():
 
         # get product feature elements
         # this includes best seller rank, review rating and review count
-        elements = self._get_product_feature_elements_from_link(self.driver)
+        elements = self._get_product_feature_elements_from_link(self._driver)
 
         # extract the best seller rank from product feature elements if it exists
         book_record["best_seller_rank"] = self._extract_best_seller_ranking(
             elements)
 
         # extract the review rating from product feature elements if it exists
-        book_record["review_rating"] = self._extract_review_ranting(elements)
+        book_record["review_rating"] = self._extract_review_rating(elements)
 
         # extract the review count from product feature elements if it exists
         book_record["review_count"] = self._extract_review_count(elements)
 
         # get the cover page image for the book
-        book_record["image_link"] = self._get_cover_page_image(self.driver)
+        book_record["image_link"] = self._get_cover_page_image(self._driver)
 
         # get the book description text
-        book_record["description"] = self._get_book_description(self.driver)
+        book_record["description"] = self._get_book_description(self._driver)
 
         # add a globally unique identifier for each book
         book_record['uuid'] = str(uuid.uuid4())
@@ -188,6 +227,7 @@ class AmazonBookScraper():
 
     @staticmethod
     def _save_book_record(path_to_record, book_record):
+        """Save the book record locally."""
         try:
             # save the book record as a json object
             with open(f"{path_to_record}/data.json", mode='w') as f:
@@ -199,15 +239,13 @@ class AmazonBookScraper():
             print(f"Could not save the record for {book_record['title']}")
 
     def _go_to_next_page(self):
-        """
-        Goes to the next page if it not the last page
-        """
-        if not self.scraper_init_done:
+        """Goes to the next page if it not the last page."""
+        if not self._scraper_init_done:
             raise Exception('Scraper not initialized.')
 
         # if no next page returns False else clicks on next and returns True
         xpath = '//span[@class="s-pagination-strip"]'
-        pagination_strip = self.driver.find_element_by_xpath(xpath)
+        pagination_strip = self._driver.find_element_by_xpath(xpath)
         elements = pagination_strip.find_elements_by_xpath('./*')
         last_element = elements[-1] 
         if last_element.find_elements(By.ID, "aria-disabled"):
@@ -218,15 +256,13 @@ class AmazonBookScraper():
             return True
 
     def _get_book_links_from_current_page(self):
-        """
-        Gets all the links in the current page
-        """
-        if not self.scraper_init_done:
+        """Gets all the links in the current page."""
+        if not self._scraper_init_done:
             raise Exception('Scraper not initialized.')
 
         # get a list of book elements on the current page
         xpath = '//div[@class="s-main-slot s-result-list s-search-results sg-row"]'
-        table_element = self.driver.find_element_by_xpath(xpath)
+        table_element = self._driver.find_element_by_xpath(xpath)
         xpath = './div[@data-asin]//a[@class="a-link-normal s-no-outline"]'
         books = table_element.find_elements_by_xpath(xpath)
 
@@ -239,6 +275,7 @@ class AmazonBookScraper():
         return book_links
 
     def _get_book_title(self, driver):
+        """Gets the book title from the current book webpage"""
         xpath = '//span[@id="productTitle"]'
         element = driver.find_element_by_xpath(xpath)
         # avoids player's handbooks because they are of different format
@@ -252,6 +289,7 @@ class AmazonBookScraper():
             return element.text
 
     def _get_book_author(self, driver):
+        """Gets the author names from the current book webpage"""
         xpath_1 = '//div[@id="authorFollow_feature_div"]'
         xpath_2 = '/div[@class="a-row a-spacing-top-small"]'
         xpath_3 = '/div[@class="a-column a-span4 authorNameColumn"]/a'
@@ -260,12 +298,15 @@ class AmazonBookScraper():
         return author_names
 
     def _get_book_attribute_elements(self, driver):
+        """Gets some book attribute elements from the current webpage"""
         xpath = '//div[@id="detailBullets_feature_div"]/ul/li'
         elements = driver.find_elements_by_xpath(xpath)
         return elements
 
     def _extract_date_attribute(self, elements):
-        # return None if date attribute not found
+        """Extracts the book title from a list of book attribute elements.
+        Return None if date attribute not found
+        """
         date = None
         for element in elements:
             items = element.find_elements_by_xpath('./span/span')
@@ -288,6 +329,9 @@ class AmazonBookScraper():
         return date
     
     def _extract_pages_attribute(self, elements):
+        """Extracts the page numbers from a list of book attribute elements.
+        Return None if not found
+        """
         pages = None
         for element in elements:
             items = element.find_elements_by_xpath('./span/span')
@@ -297,6 +341,9 @@ class AmazonBookScraper():
         return pages
 
     def _extract_isbn_attribute(self, elements):
+        """Extracts the isbn number from a list of book attribute elements.
+        Return None if not found
+        """
         isbn = None
         for element in elements:
             items = element.find_elements_by_xpath('./span/span')
@@ -305,11 +352,15 @@ class AmazonBookScraper():
         return isbn
 
     def _get_product_feature_elements_from_link(self, driver):
+        """Gets some product feature elements from the current webpage"""
         xpath = '//div[@id="detailBulletsWrapper_feature_div"]/ul'
         elements = driver.find_elements_by_xpath(xpath)
         return elements
 
     def _extract_best_seller_ranking(self, elements):
+        """Extracts the bestseller ranking from a list of product features.
+        Return None if not found
+        """
         best_seller_rank = None
         for element in elements:
             try:
@@ -327,7 +378,10 @@ class AmazonBookScraper():
                 pass
         return best_seller_rank
 
-    def _extract_review_ranting(self, elements):
+    def _extract_review_rating(self, elements):
+        """Extracts the review ratings from a list of product features.
+        Return None if not found
+        """
         review_rating = None
         for element in elements:
             try:
@@ -340,6 +394,9 @@ class AmazonBookScraper():
         return review_rating
 
     def _extract_review_count(self, elements):
+        """Extracts the review count from a list of product features.
+        Return None if not found
+        """
         review_count = None
         for element in elements:
             try:
@@ -354,6 +411,9 @@ class AmazonBookScraper():
         return review_count
 
     def _get_cover_page_image(self, driver):
+        """Extracts the cover page image from the current book page.
+        Return None if not found
+        """
         image_link = None
         try:
             xpath = '//div[@id="main-image-container"]//img'
@@ -364,6 +424,9 @@ class AmazonBookScraper():
         return image_link
 
     def _get_book_description(self, driver):
+        """Extracts the book description from the current book page.
+        Return None if not found
+        """
         description = None
         try:
             xpath_1 = '//div[@data-a-expander-name="book_description_expander"]'
@@ -379,11 +442,6 @@ if __name__ == '__main__':
 
     url = 'https://www.amazon.com/s?i=stripbooks&rh=n%3A25&fs=true&qid=1643228276&ref=sr_pg_1'
     amazonBookScraper = AmazonBookScraper(url)
-    # amazonBookScraper.scraper_init_done = True
-    # amazonBookScraper.sort_by_reviews()
-    # item_links = amazonBookScraper.get_book_links(100)
-    # book_url = 'https://www.amazon.com/Midnight-Library-Novel-Matt-Haig/dp/0525559477/ref=sr_1_1?qid=1643367921&s=books&sr=1-1'
-    # book_details = amazonBookScraper.scrape_book_data_from_link(book_url)
     book_records = amazonBookScraper.scrape_books(5, save_data=True)
     print(f'Total:{len(book_records)}')
     df = pd.DataFrame(book_records)
