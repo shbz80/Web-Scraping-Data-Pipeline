@@ -31,6 +31,9 @@ class AmazonBookScraper():
     def __init__(self, url: str) -> None:
         """Inits Selenium driver and gets to the given url
 
+        Sorts the books by the criterion: number of reviews.
+        TODO: accept the sort criterion as a parameter
+
         Args:
             url (str): expects the url to the required book category
         """
@@ -47,15 +50,14 @@ class AmazonBookScraper():
         except:
             print('Invalid url')
         time.sleep(PAGE_SLEEP_TIME)
+        self._sort_by_reviews()
+        self._scraper_init_done = True
 
     def scrape_books(
             self, num_books: int, 
             save_data: bool=False) -> list[dict[Any, Any]]:
         """The main method that acquires the required number of
         book records
-
-        Sorts the books by the criterion: number of reviews.
-        TODO: accept the sort criterion as a parameter
 
         Args:
             num_books (int): the number of books to acquire
@@ -65,10 +67,9 @@ class AmazonBookScraper():
         Returns:
             list[dict[Any, Any]]: list of num_books book records
         """
-        self._sort_by_reviews()
-
-        self._scraper_init_done = True
-
+        if not self._scraper_init_done:
+            raise Exception('Scraper not initialized.')
+            
         # get the links for the required number of books
         book_links = self.get_book_links(num_books)
 
