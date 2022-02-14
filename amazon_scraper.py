@@ -3,7 +3,7 @@ a specific category in Amazon.
 """
 from ctypes import Union
 import os
-from typing import Any, Union
+from typing import Any, Union, Optional
 import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -55,36 +55,44 @@ class AmazonBookScraper():
 
     def scrape_books(
             self, num_books: int, 
-            save_data: bool=False) -> list[dict[Any, Any]]:
+            save_loc: str=None,
+            save_data: bool=False,
+                    ) -> tuple[list[dict[Any, Any]], int]:
         """The main method that acquires the required number of
         book records
 
         Args:
             num_books (int): the number of books to acquire
+            save_loc (str, optional): file save location
             save_data (bool, optional): flag to save data locally.
                                         Defaults to False.
 
         Returns:
             list[dict[Any, Any]]: list of num_books book records
+            int: number of skipped books due to invlaid format
         """
         if not self._scraper_init_done:
             raise Exception('Scraper not initialized.')
-            
+
         # get the links for the required number of books
         book_links = self.get_book_links(num_books)
 
         if save_data:
             # create the parent directory for local data storage
-            path_to_local_data_dir = os.getcwd() + '/raw_data/'
+            if not save_loc:
+                save_loc = os.getcwd()
+            path_to_local_data_dir = save_loc + '/raw_data/'
             create_dir_if_not_exists(path_to_local_data_dir)
 
         # prepare a list of scraped book records
         scraped_record_list = []
+        invalid_count = 0
         for count, book_link in enumerate(book_links):
             # get the book record for the book_link
             book_record = self.scrape_book_data_from_link(book_link)
             # continue with this book only if a valid record was created
             if book_record is None:
+                invalid_count += 1
                 continue
             if save_data:
                 # each record dir is named after its isbn number
@@ -98,8 +106,8 @@ class AmazonBookScraper():
             scraped_record_list.append(book_record)
             print(f'Book count: {count}')
 
-        # return the list of book records (dicts)
-        return scraped_record_list
+        # return the list of book records (dicts) and the number of skipped books
+        return scraped_record_list, invalid_count
     
     def _sort_by_reviews(self) -> None:
         """Sort the books by the number of reviews
@@ -186,7 +194,7 @@ class AmazonBookScraper():
         book_record["author(s)"] = self._get_book_author(self._driver)
 
         # get book attribute elements
-        # this includes date, pages and ISBN-13 number
+        # this includes date, pages and ISBN number
         elements = self._get_book_attribute_elements(self._driver)
 
         # extract the ISBN attribute from book attribute elements
@@ -440,10 +448,11 @@ class AmazonBookScraper():
 
 if __name__ == '__main__':
     import pandas as pd
+    import os
 
     url = 'https://www.amazon.com/s?i=stripbooks&rh=n%3A25&fs=true&qid=1643228276&ref=sr_pg_1'
     amazonBookScraper = AmazonBookScraper(url)
-    book_records = amazonBookScraper.scrape_books(5, save_data=True)
+    book_records, _ = amazonBookScraper.scrape_books(5, save_data=True)
     print(f'Total:{len(book_records)}')
     df = pd.DataFrame(book_records)
     print(df)
