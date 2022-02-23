@@ -115,6 +115,16 @@ class TestBookScraping(unittest.TestCase):
         # is the uuid 36 chars
         self.assertEqual(len(uuid), 36)
 
+    def test_book_record_reviews(self):
+        # is the reviews attribute present
+        self.assertIn('reviews', self.record)
+        reviews = self.record['reviews']
+        # is the reviews attribute a list
+        self.assertIsInstance(reviews, list)
+        # are all reviews strings
+        for review in reviews:
+            self.assertIsInstance(review, str)
+
     def tearDown(self) -> None:
         del self.record
 

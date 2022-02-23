@@ -1,5 +1,5 @@
 """This module implements a scraper class for scraping book details from 
-a specific category in Amazon.
+a specific category in Amazon.com.
 """
 from ctypes import Union
 import os
@@ -55,6 +55,7 @@ class AmazonBookScraper():
 
     def scrape_books(
             self, num_books: int, 
+            review_num = 10,
             save_loc: str=None,
             save_data: bool=False,
                     ) -> tuple[list[dict[Any, Any]], int]:
@@ -89,7 +90,7 @@ class AmazonBookScraper():
         invalid_count = 0
         for count, book_link in enumerate(book_links):
             # get the book record for the book_link
-            book_record = self.scrape_book_data_from_link(book_link)
+            book_record = self.scrape_book_data_from_link(book_link, review_num=review_num)
             # continue with this book only if a valid record was created
             if book_record is None:
                 invalid_count += 1
@@ -163,11 +164,14 @@ class AmazonBookScraper():
         else:
             return book_link_list
 
-    def scrape_book_data_from_link(self, link: str) -> Union[dict[str, Any], None]:
+    def scrape_book_data_from_link(
+                self, link: str,
+                review_num: int=10) -> Union[dict[str, Any], None]:
         """Returns a dict with book attributes for a single book
 
         Args:
             link (str): url to the book webpage
+            review_num (int): max number of reviews to scrape for each book
 
         Returns:
             Union[dict[str, Any], None]: dict record of a valid book
@@ -228,6 +232,9 @@ class AmazonBookScraper():
 
         # get the book description text
         book_record["description"] = self._get_book_description(self._driver)
+
+        # get book reviews
+        book_record["reviews"] = self._get_book_reviews(self._driver, num=review_num)
 
         # add a globally unique identifier for each book
         book_record['uuid'] = str(uuid.uuid4())
@@ -446,13 +453,55 @@ class AmazonBookScraper():
             pass
         return description
 
+    def _get_book_reviews(self, driver, num=10):
+        """Exctacts num top reviews from the current book page if available."""
+        self._go_to_review_page(driver)
+        reviews = []
+        while len(reviews) < num:
+            reviews.extend(self._extract_reviews_from_curr_page(driver))
+            if not self._go_to_next_review_page_if_available(driver):
+                break
+        review_count = len(reviews)        
+        return reviews[:num if num > review_count else review_count]
+    
+    def _go_to_review_page(self, driver):
+        """Clicks on see all reviews on the current book page"""
+        if not self._scraper_init_done:
+            raise Exception('Scraper not initialized.')
+
+        xpath = '//a[@data-hook="see-all-reviews-link-foot"]'
+        element = driver.find_element_by_xpath(xpath)
+        element.click()
+        time.sleep(PAGE_SLEEP_TIME)
+
+    def _extract_reviews_from_curr_page(self, driver):
+        xpath = '//div[@id="cm_cr-review_list"]/div[@data-hook="review"]'
+        elements = driver.find_elements_by_xpath(xpath)
+        reviews = []
+        for element in elements:
+            xpath = './/span[@data-hook="review-body"]/span'
+            reviews.append(element.find_element_by_xpath(xpath).text)
+        return reviews
+
+    def _go_to_next_review_page_if_available(self, driver):
+        xpath = '//div[@id="cm_cr-pagination_bar"]/ul/li'
+        element = driver.find_elements_by_xpath(xpath)[1]
+        next_label = element.get_attribute('class')
+        if next_label == 'a-last':
+            element.click()
+            time.sleep(PAGE_SLEEP_TIME)
+            return True
+        else: 
+            return False
+
+
 if __name__ == '__main__':
     import pandas as pd
     import os
 
     url = 'https://www.amazon.com/s?i=stripbooks&rh=n%3A25&fs=true&qid=1643228276&ref=sr_pg_1'
     amazonBookScraper = AmazonBookScraper(url)
-    book_records, _ = amazonBookScraper.scrape_books(5, save_data=True)
+    book_records, _ = amazonBookScraper.scrape_books(5, review_num=20, save_data=True)
     print(f'Total:{len(book_records)}')
     df = pd.DataFrame(book_records)
     print(df)
@@ -467,6 +516,7 @@ if __name__ == '__main__':
     print(df['image_link'])
     print(df['description'])
     print(df['uuid'])
+    print(len(df['reviews']))
 
 
 
