@@ -71,7 +71,12 @@ class AmazonBookScraper():
         save_data: bool = False,
     ) -> tuple[list[dict[Any, Any]], int]:
         """The main method that acquires the required number of
-        book records
+        book records and reviews. It returns two lists of items:
+        1) list of scraped book attributes except reviews (records)
+        2) list of scraped book reviews (reviews)
+        Since each book has review_num reviews, 2) is that many times
+        larger than 1).
+        All reviews for a book has the book uuid associated with it.
 
         Args:
             num_books (int): the number of books to acquire
@@ -81,7 +86,7 @@ class AmazonBookScraper():
 
         Returns:
             list[dict[Any, Any]]: list of num_books book records
-            int: number of skipped books due to invlaid format
+            list[dict[Any, Any]]: list of num_books book reviews
         """
         if not self._scraper_init_done:
             raise Exception('Scraper not initialized.')
@@ -96,12 +101,13 @@ class AmazonBookScraper():
             path_to_local_data_dir = save_loc + '/raw_data/'
             create_dir_if_not_exists(path_to_local_data_dir)
 
-        # prepare a list of scraped book records
+        # prepare a list of scraped book records and reviews
         scraped_record_list = []
+        scraped_review_list = []
         invalid_count = 0
         for count, book_link in enumerate(book_links):
             # get the book record for the book_link
-            book_record = self.scrape_book_data_from_link(
+            book_record, book_reviews = self.scrape_book_data_from_link(
                 book_link, review_num=review_num)
             # continue with this book only if a valid record was created
             if book_record is None:
@@ -112,15 +118,16 @@ class AmazonBookScraper():
                 # save a local copy only if it doesn't exist
                 path_to_record = path_to_local_data_dir + book_record['isbn']
                 if create_dir_if_not_exists(path_to_record):
-                    self._save_book_record(path_to_record, book_record)
+                    self._save_book_record(path_to_record, book_record, book_reviews)
                 else:
                     print(
                         f"Local record for '{book_record['title']}' already exisits")
             scraped_record_list.append(book_record)
+            scraped_review_list.extend(book_reviews)
             print(f'Book count: {count}')
 
-        # return the list of book records (dicts) and the number of skipped books
-        return scraped_record_list, invalid_count
+        # return the list of book records and reviews
+        return scraped_record_list, scraped_review_list
 
     def _sort_by_reviews(self) -> None:
         """Sort the books by the number of reviews
@@ -178,7 +185,7 @@ class AmazonBookScraper():
 
     def scrape_book_data_from_link(
             self, link: str,
-            review_num: int = 10) -> Union[dict[str, Any], None]:
+            review_num: int = 10) -> tuple[Optional[dict], Optional[list[dict]]]:
         """Returns a dict with book attributes for a single book
 
         Args:
@@ -186,7 +193,8 @@ class AmazonBookScraper():
             review_num (int): max number of reviews to scrape for each book
 
         Returns:
-            Union[dict[str, Any], None]: dict record of a valid book
+            Optional[dict]: dict record of a valid book
+            Optional[list[dict]]: list of dict reviews a valid book
         """
         if not self._scraper_init_done:
             raise Exception('Scraper not initialized.')
@@ -204,7 +212,7 @@ class AmazonBookScraper():
         book_record["title"] = self._get_book_title(self._driver)
         # skip this record item if it is not in a valid format
         if book_record['title'] is None:
-            return None
+            return None, None
 
         # get the author names
         book_record["author(s)"] = self._get_book_author(self._driver)
@@ -220,7 +228,7 @@ class AmazonBookScraper():
         book_record["isbn"] = self._extract_isbn_attribute(elements)
         # skip this record item if there is no isbn number
         if book_record['isbn'] is None:
-            return None
+            return None, None
 
         # extract the date attribute from book attribute elements if it exists
         book_record["date"] = self._extract_date_attribute(elements)
@@ -255,21 +263,43 @@ class AmazonBookScraper():
         # add a globally unique identifier for each book
         book_record['uuid'] = str(uuid.uuid4())
 
-        return book_record
+        # get book reviews, this is a seperate list of dicts
+        book_reviews = self._get_book_reviews(self._driver, num=review_num)
+        # append the book's uuid for all reviews
+        for review in book_reviews:
+            review['uuid'] = book_record['uuid']
+
+        return book_record, book_reviews
 
     @staticmethod
-    def _save_book_record(path_to_record, book_record):
+    def _save_book_record(path_to_record, book_record, book_reviews):
         """Save the book record locally."""
         try:
             # save the book record as a json object
             with open(f"{path_to_record}/data.json", mode='w') as f:
                 json.dump(book_record, f)
+        except:
+            print(f"Could not save the record for {book_record['title']}")
+
+        try:
             # save the cover page image file with isbn as name
-            image_path = path_to_record + "/" + book_record['isbn']
+            image_path = path_to_record + "/" + book_record['isbn'] + ".img"
             urllib.request.urlretrieve(
                 book_record['image_link'], filename=image_path)
         except:
-            print(f"Could not save the record for {book_record['title']}")
+            print(f"Could not save coverpage image for {book_record['title']}")
+
+        try:
+            # create the review folder
+            path_to_review_dir = path_to_record + '/reviews'
+            create_dir_if_not_exists(path_to_review_dir)
+            if isinstance(book_reviews, list):
+                # save each review as a json file
+                for i, review in enumerate(book_reviews):
+                    with open(f"{path_to_review_dir}/data{i}.json", mode='w') as f:
+                        json.dump(review, f)
+        except:
+            print(f"Could not save reviews for {book_record['title']}")
 
     def _go_to_next_page(self):
         """Goes to the next page if it not the last page."""
@@ -552,7 +582,7 @@ if __name__ == '__main__':
     url = "https://www.amazon.com/s?i=stripbooks&rh=n%3A25&fs=true&qid=1645782603&ref=sr_pg_1"
     banned = ["Player's Handbook", "Dungeons and Dragons"]
     amazonBookScraper = AmazonBookScraper(url, browser='firefox', banned_list=banned)
-    book_records, _ = amazonBookScraper.scrape_books(
+    book_records, book_reviews = amazonBookScraper.scrape_books(
         5, review_num=50, save_data=True)
     print(f'Total:{len(book_records)}')
     df = pd.DataFrame(book_records)
@@ -570,5 +600,9 @@ if __name__ == '__main__':
     print(df["image_link"].head())
     print(df["uuid"].head())
     print(df["isbn"].head())
-    print(df["reviews"].head())
+
+    df = pd.DataFrame(book_reviews)
+    df.info()
+    print(df.head())
+
     

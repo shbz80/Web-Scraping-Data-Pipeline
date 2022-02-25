@@ -12,7 +12,7 @@ class TestBookScraping(unittest.TestCase):
         scraper = AmazonBookScraper(url=section_url, browser='firefox')
         # test book: "The Midnight Library: A Novel"
         book_url = 'https://www.amazon.com/Midnight-Library-Novel-Matt-Haig/dp/0525559477/ref=sr_1_1?qid=1644789523&s=books&sr=1-1'
-        self.record = scraper.scrape_book_data_from_link(book_url)
+        self.record, self.reviews = scraper.scrape_book_data_from_link(book_url)
 
     def test_book_record_type(self):
         self.assertIsInstance(self.record, dict)
@@ -129,14 +129,17 @@ class TestBookScraping(unittest.TestCase):
         self.assertIn('reviews', self.record)
         reviews = self.record['reviews']
         # is the reviews attribute a list
-        self.assertIsInstance(reviews, list)
+        self.assertIsInstance(self.reviews, list)
         # are all review text strings and ratings int
-        for review_text, review_rating in reviews:
-            self.assertIsInstance(review_text, str)
-            self.assertIsInstance(review_rating, int)
+        for review in self.reviews:
+            self.assertIsInstance(review, dict)
+            self.assertIsInstance(review['text'], str)
+            self.assertIsInstance(review['rating'], int)
+            self.assertIsInstance(review['uuid'], str)
 
     def tearDown(self) -> None:
         del self.record
+        del self.reviews
 
 if __name__ == '__main__':
     unittest.main()
