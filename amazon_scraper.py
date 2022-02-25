@@ -468,7 +468,7 @@ class AmazonBookScraper():
         """
         image_link = None
         try:
-            xpath = '//div[@id="main-image-container"]//img'
+            xpath = '//div[@id="main-image-container"]//img[@id="imgBlkFront"]'
             element = driver.find_element_by_xpath(xpath)
             image_link = element.get_attribute("src")
         except:
