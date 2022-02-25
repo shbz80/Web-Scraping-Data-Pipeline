@@ -31,6 +31,15 @@ class TestBookScraping(unittest.TestCase):
         # is the author attribute a string
         self.assertIsInstance(author, str)
 
+    def test_book_record_price(self):
+        # is the price attribute present
+        self.assertIn('price', self.record)
+        price = self.record['price']
+        # is the price attribute a float
+        self.assertIsInstance(price, float)
+        # is the price positive valued
+        self.assertGreater(price, 0.0)
+
     def test_book_record_isbn(self):
         # is the isbn attribute present
         self.assertIn('isbn', self.record)

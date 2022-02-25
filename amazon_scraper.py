@@ -208,6 +208,9 @@ class AmazonBookScraper():
         # get the author names
         book_record["author(s)"] = self._get_book_author(self._driver)
 
+        # get the book price
+        book_record["price"] = self._get_book_price(self._driver)
+
         # get book attribute elements
         # this includes date, pages and ISBN number
         elements = self._get_book_attribute_elements(self._driver)
@@ -324,6 +327,26 @@ class AmazonBookScraper():
         elements = driver.find_elements_by_xpath(xpath_1+xpath_2+xpath_3)
         author_names = ",".join([element.text for element in elements])
         return author_names
+
+    def _get_book_price(self, driver):
+        """Gets the book's hardcover price"""
+        xpath = '//div[@id="tmmSwatches"]'
+        element = driver.find_element_by_xpath(xpath)
+        price_str = element.text
+        price_l = price_str.split('\n')
+        if 'Paperback' in price_l:
+            option = 'Paperback'
+        elif 'Mass Market Paperback' in price_l:
+            option = 'Mass Market Paperback'
+        elif 'Hardcover' in price_l:
+            option = 'Hardcover'
+        else:
+            return None
+        i = price_l.index(option)
+        price_str = price_l[i + 1]
+        i = price_str.index('$')
+        price = float(price_str[i+1:])
+        return price
 
     def _get_book_attribute_elements(self, driver):
         """Gets some book attribute elements from the current webpage"""
