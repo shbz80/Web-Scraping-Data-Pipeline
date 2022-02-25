@@ -256,10 +256,6 @@ class AmazonBookScraper():
         # get the book description text
         book_record["description"] = self._get_book_description(self._driver)
 
-        # get book reviews
-        book_record["reviews"] = self._get_book_reviews(
-            self._driver, num=review_num)
-
         # add a globally unique identifier for each book
         book_record['uuid'] = str(uuid.uuid4())
 
@@ -531,7 +527,7 @@ class AmazonBookScraper():
             if not self._go_to_next_review_page_if_available(driver):
                 break
         review_count = len(reviews)
-        return reviews[:num if num > review_count else review_count]
+        return reviews[:num if num < review_count else review_count]
 
     def _go_to_all_review_page(self, driver):
         """Clicks on see all reviews on the current book page"""
@@ -560,7 +556,7 @@ class AmazonBookScraper():
             assert(rating_l[3] == '5')
             assert(rating_l[4] == 'stars')
             review_rating = int(float(rating_l[0]))
-            reviews.append((review_text, review_rating))
+            reviews.append({'text': review_text, 'rating': review_rating})
         return reviews
 
     def _go_to_next_review_page_if_available(self, driver):
@@ -596,7 +592,6 @@ if __name__ == '__main__':
     print(df["pages"].head())
     print(df["price"].head())
     print(df["date"].head())
-    print(df["reviews"].head())
     print(df["image_link"].head())
     print(df["uuid"].head())
     print(df["isbn"].head())
