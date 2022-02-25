@@ -13,7 +13,7 @@ import urllib.request
 from utils import create_dir_if_not_exists
 
 # the number of seconds to sleep after a click to a new page
-PAGE_SLEEP_TIME = 2
+PAGE_SLEEP_TIME = 1
 
 class AmazonBookScraper():
     """Scrapes any number of books from a ctaegory after sorting by a 
@@ -26,11 +26,11 @@ class AmazonBookScraper():
     The book category is hardcoded to "science finction and fantasy"
 
     The sort criterion is hardcoded to number of reviews (descending)
-    """    
+    """
 
     def __init__(self, url: str,
                 browser: str='chrome',
-                banned_list: Optional[list[str]]=None) -> None:
+                banned_list: Optional[list[str]] = None) -> None:
         """Inits Selenium driver and gets to the given url
 
         Sorts the books by the criterion: number of reviews.
@@ -45,11 +45,11 @@ class AmazonBookScraper():
         self._url = url
         self._banned_list = banned_list
         self._browser = browser
-        
+
         # init Selenium and get to the url
         try:
             if self._browser == 'chrome':
-            self._driver = webdriver.Chrome()
+                self._driver = webdriver.Chrome()
             elif self._browser == 'firefox':
                 self._driver = webdriver.Firefox()
             else:
@@ -65,11 +65,11 @@ class AmazonBookScraper():
         self._scraper_init_done = True
 
     def scrape_books(
-            self, num_books: int, 
-            review_num = 10,
-            save_loc: str=None,
-            save_data: bool=False,
-                    ) -> tuple[list[dict[Any, Any]], int]:
+        self, num_books: int,
+        review_num=10,
+        save_loc: str = None,
+        save_data: bool = False,
+    ) -> tuple[list[dict[Any, Any]], int]:
         """The main method that acquires the required number of
         book records
 
@@ -101,7 +101,8 @@ class AmazonBookScraper():
         invalid_count = 0
         for count, book_link in enumerate(book_links):
             # get the book record for the book_link
-            book_record = self.scrape_book_data_from_link(book_link, review_num=review_num)
+            book_record = self.scrape_book_data_from_link(
+                book_link, review_num=review_num)
             # continue with this book only if a valid record was created
             if book_record is None:
                 invalid_count += 1
@@ -120,7 +121,7 @@ class AmazonBookScraper():
 
         # return the list of book records (dicts) and the number of skipped books
         return scraped_record_list, invalid_count
-    
+
     def _sort_by_reviews(self) -> None:
         """Sort the books by the number of reviews
         TODO: recieve the sort criterion as argument
@@ -176,8 +177,8 @@ class AmazonBookScraper():
             return book_link_list
 
     def scrape_book_data_from_link(
-                self, link: str,
-                review_num: int=10) -> Union[dict[str, Any], None]:
+            self, link: str,
+            review_num: int = 10) -> Union[dict[str, Any], None]:
         """Returns a dict with book attributes for a single book
 
         Args:
@@ -248,7 +249,8 @@ class AmazonBookScraper():
         book_record["description"] = self._get_book_description(self._driver)
 
         # get book reviews
-        book_record["reviews"] = self._get_book_reviews(self._driver, num=review_num)
+        book_record["reviews"] = self._get_book_reviews(
+            self._driver, num=review_num)
 
         # add a globally unique identifier for each book
         book_record['uuid'] = str(uuid.uuid4())
@@ -278,7 +280,7 @@ class AmazonBookScraper():
         xpath = '//span[@class="s-pagination-strip"]'
         pagination_strip = self._driver.find_element_by_xpath(xpath)
         elements = pagination_strip.find_elements_by_xpath('./*')
-        last_element = elements[-1] 
+        last_element = elements[-1]
         if last_element.find_elements(By.ID, "aria-disabled"):
             return False
         else:
@@ -312,13 +314,13 @@ class AmazonBookScraper():
         # avoids player's handbooks because they are of different format
         # and will break the logic
         if isinstance(self._banned_list, list):
-        for banned in self._banned_list:
-            if banned in element.text:
-            print(
-                f'Skipping {element.text} since it is not in the right format')
-            return None
+            for banned in self._banned_list:
+                if banned in element.text:
+                    print(
+                        f'Skipping {element.text} since it is not in the right format')
+                    return None
 
-            return element.text
+        return element.text
 
     def _get_book_author(self, driver):
         """Gets the author names from the current book webpage"""
@@ -379,7 +381,7 @@ class AmazonBookScraper():
                 # removes a comma
                 date = "".join(date.split(","))
         return date
-    
+
     def _extract_pages_attribute(self, elements):
         """Extracts the page numbers from a list of book attribute elements.
         Return None if not found
@@ -431,7 +433,7 @@ class AmazonBookScraper():
         return best_seller_rank
 
     def _extract_review_rating(self, elements):
-        """Extracts the review ratings from a list of product features.
+        """Extracts the average review ratings from a list of product features.
         Return None if not found
         """
         review_rating = None
@@ -498,9 +500,9 @@ class AmazonBookScraper():
             reviews.extend(self._extract_reviews_from_curr_page(driver))
             if not self._go_to_next_review_page_if_available(driver):
                 break
-        review_count = len(reviews)        
+        review_count = len(reviews)
         return reviews[:num if num > review_count else review_count]
-    
+
     def _go_to_all_review_page(self, driver):
         """Clicks on see all reviews on the current book page"""
         if not self._scraper_init_done:
@@ -512,6 +514,7 @@ class AmazonBookScraper():
         time.sleep(PAGE_SLEEP_TIME)
 
     def _extract_reviews_from_curr_page(self, driver):
+        """Extracts both review text and rating of the reviews"""
         xpath = '//div[@id="cm_cr-review_list"]/div[@data-hook="review"]'
         elements = driver.find_elements_by_xpath(xpath)
         reviews = []
@@ -538,7 +541,7 @@ class AmazonBookScraper():
             element.click()
             time.sleep(PAGE_SLEEP_TIME)
             return True
-        else: 
+        else:
             return False
 
 
@@ -546,24 +549,26 @@ if __name__ == '__main__':
     import pandas as pd
     import os
 
-    url = 'https://www.amazon.com/s?i=stripbooks&rh=n%3A25&fs=true&qid=1643228276&ref=sr_pg_1'
-    amazonBookScraper = AmazonBookScraper(url)
-    book_records, _ = amazonBookScraper.scrape_books(5, review_num=20, save_data=True)
+    url = "https://www.amazon.com/s?i=stripbooks&rh=n%3A25&fs=true&qid=1645782603&ref=sr_pg_1"
+    banned = ["Player's Handbook", "Dungeons and Dragons"]
+    amazonBookScraper = AmazonBookScraper(url, browser='firefox', banned_list=banned)
+    book_records, _ = amazonBookScraper.scrape_books(
+        100, review_num=50, save_data=True)
     print(f'Total:{len(book_records)}')
     df = pd.DataFrame(book_records)
-    print(df)
-    print(df['title'])
-    print(df['author(s)'])
-    print(df['date'])
-    print(df['pages'])
-    print(df['isbn'])
-    print(df['best_seller_rank'])
-    print(df['review_rating'])
-    print(df['review_count'])
-    print(df['image_link'])
-    print(df['description'])
-    print(df['uuid'])
-    print(len(df['reviews']))
-
-
-
+    df.info()
+    print(df["title"].head())
+    print(df["author(s)"].head())
+    print(df["best_seller_rank"].head())
+    print(df["review_count"].head())
+    print(df["review_rating"].head())
+    print(df["description"].head())
+    print(df["pages"].head())
+    print(df["price"].head())
+    print(df["date"].head())
+    print(df["reviews"].head())
+    print(df["image_link"].head())
+    print(df["uuid"].head())
+    print(df["isbn"].head())
+    print(df["reviews"].head())
+    

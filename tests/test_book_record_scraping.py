@@ -9,7 +9,7 @@ class TestBookScraping(unittest.TestCase):
     def setUp(self) -> None:
         # inits the scraper
         section_url = 'https://www.amazon.com/s?i=stripbooks&rh=n%3A25&fs=true&qid=1643228276&ref=sr_pg_1'
-        scraper = AmazonBookScraper(url=section_url)
+        scraper = AmazonBookScraper(url=section_url, browser='firefox')
         # test book: "The Midnight Library: A Novel"
         book_url = 'https://www.amazon.com/Midnight-Library-Novel-Matt-Haig/dp/0525559477/ref=sr_1_1?qid=1644789523&s=books&sr=1-1'
         self.record = scraper.scrape_book_data_from_link(book_url)
