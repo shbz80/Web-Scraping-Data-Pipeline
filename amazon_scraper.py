@@ -401,7 +401,7 @@ class AmazonBookScraper():
         isbn = None
         for element in elements:
             items = element.find_elements_by_xpath('./span/span')
-            if 'ISBN' in items[0].text:
+            if 'ISBN-13' in items[0].text:
                 isbn = items[0].text[:-2] + '-' + items[1].text
         return isbn
 
@@ -553,7 +553,7 @@ if __name__ == '__main__':
     banned = ["Player's Handbook", "Dungeons and Dragons"]
     amazonBookScraper = AmazonBookScraper(url, browser='firefox', banned_list=banned)
     book_records, _ = amazonBookScraper.scrape_books(
-        100, review_num=50, save_data=True)
+        5, review_num=50, save_data=True)
     print(f'Total:{len(book_records)}')
     df = pd.DataFrame(book_records)
     df.info()
