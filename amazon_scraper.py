@@ -262,9 +262,10 @@ class AmazonBookScraper():
             # save the book record as a json object
             with open(f"{path_to_record}/data.json", mode='w') as f:
                 json.dump(book_record, f)
-            # save the cover page image file
+            # save the cover page image file with isbn as name
+            image_path = path_to_record + "/" + book_record['isbn']
             urllib.request.urlretrieve(
-                book_record['image_link'], filename=path_to_record+'/0.jpg')
+                book_record['image_link'], filename=image_path)
         except:
             print(f"Could not save the record for {book_record['title']}")
 
