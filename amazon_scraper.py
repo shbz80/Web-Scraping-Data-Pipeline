@@ -478,12 +478,13 @@ class AmazonBookScraper():
         """Extracts the book description from the current book page.
         Return None if not found
         """
-        description = None
+        description = ""
         try:
             xpath_1 = '//div[@data-a-expander-name="book_description_expander"]'
             xpath_2 = '/div/span'
-            element = driver.find_element_by_xpath(xpath_1 + xpath_2)
-            description = element.text
+            elements = driver.find_elements_by_xpath(xpath_1 + xpath_2)
+            for element in elements:
+                description = description + element.text
         except:
             pass
         return description
