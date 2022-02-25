@@ -130,9 +130,10 @@ class TestBookScraping(unittest.TestCase):
         reviews = self.record['reviews']
         # is the reviews attribute a list
         self.assertIsInstance(reviews, list)
-        # are all reviews strings
-        for review in reviews:
-            self.assertIsInstance(review, str)
+        # are all review text strings and ratings int
+        for review_text, review_rating in reviews:
+            self.assertIsInstance(review_text, str)
+            self.assertIsInstance(review_rating, int)
 
     def tearDown(self) -> None:
         del self.record
