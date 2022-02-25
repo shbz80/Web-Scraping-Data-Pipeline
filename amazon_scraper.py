@@ -28,7 +28,9 @@ class AmazonBookScraper():
     The sort criterion is hardcoded to number of reviews (descending)
     """    
 
-    def __init__(self, url: str, browser: str='chrome', banned_list: list[str] = None) -> None:
+    def __init__(self, url: str,
+                browser: str='chrome',
+                banned_list: Optional[list[str]]=None) -> None:
         """Inits Selenium driver and gets to the given url
 
         Sorts the books by the criterion: number of reviews.
@@ -305,6 +307,7 @@ class AmazonBookScraper():
         element = driver.find_element_by_xpath(xpath)
         # avoids player's handbooks because they are of different format
         # and will break the logic
+        if isinstance(self._banned_list, list):
         for banned in self._banned_list:
             if banned in element.text:
             print(
