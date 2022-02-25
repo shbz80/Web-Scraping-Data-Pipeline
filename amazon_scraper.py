@@ -491,7 +491,7 @@ class AmazonBookScraper():
 
     def _get_book_reviews(self, driver, num=10):
         """Exctacts num top reviews from the current book page if available."""
-        self._go_to_review_page(driver)
+        self._go_to_all_review_page(driver)
         reviews = []
         while len(reviews) < num:
             reviews.extend(self._extract_reviews_from_curr_page(driver))
@@ -500,7 +500,7 @@ class AmazonBookScraper():
         review_count = len(reviews)        
         return reviews[:num if num > review_count else review_count]
     
-    def _go_to_review_page(self, driver):
+    def _go_to_all_review_page(self, driver):
         """Clicks on see all reviews on the current book page"""
         if not self._scraper_init_done:
             raise Exception('Scraper not initialized.')
