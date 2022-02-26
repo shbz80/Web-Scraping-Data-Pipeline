@@ -1,7 +1,6 @@
 """This module implements a scraper class for scraping book details from 
 a specific category in Amazon.com.
 """
-from ctypes import Union
 import os
 from typing import Any, Union, Optional
 import time
@@ -10,6 +9,7 @@ from selenium.webdriver.common.by import By
 import uuid
 import json
 import urllib.request
+import boto3
 from utils import create_dir_if_not_exists
 
 # the number of seconds to sleep after a click to a new page
@@ -45,6 +45,7 @@ class AmazonBookScraper():
         self._url = url
         self._banned_list = banned_list
         self._browser = browser
+        self._save_strategy = None
 
         # init Selenium and get to the url
         try:
@@ -64,29 +65,27 @@ class AmazonBookScraper():
         self._sort_by_reviews()
         self._scraper_init_done = True
 
-    def scrape_books(
-        self, num_books: int,
-        review_num=10,
-        save_loc: str = None,
-        save_data: bool = False,
-    ) -> tuple[list[dict[Any, Any]], int]:
+    def scrape_books(self, 
+                num_books: int,
+                save_opt: Optional[dict] = None,
+                review_num=10) -> tuple[list[dict], list[dict]]:
         """The main method that acquires the required number of
         book records and reviews. It returns two lists of items:
         1) list of scraped book attributes except reviews (records)
         2) list of scraped book reviews (reviews)
-        Since each book has review_num reviews, 2) is that many times
+        Since each book has review_num reviews, 2) is review_num times
         larger than 1).
         All reviews for a book has the book uuid associated with it.
 
         Args:
             num_books (int): the number of books to acquire
-            save_loc (str, optional): file save location
-            save_data (bool, optional): flag to save data locally.
-                                        Defaults to False.
+            save_opt (dict, optional): dict that contains local/cloud
+                                       save details
+            review_num (int): number of reviews for each book
 
         Returns:
-            list[dict[Any, Any]]: list of num_books book records
-            list[dict[Any, Any]]: list of num_books book reviews
+            list[dict]: list of num_books book records
+            list[dict]: list of num_books book reviews
         """
         if not self._scraper_init_done:
             raise Exception('Scraper not initialized.')
@@ -94,34 +93,26 @@ class AmazonBookScraper():
         # get the links for the required number of books
         book_links = self.get_book_links(num_books)
 
-        if save_data:
-            # create the parent directory for local data storage
-            if not save_loc:
-                save_loc = os.getcwd()
-            path_to_local_data_dir = save_loc + '/raw_data/'
-            create_dir_if_not_exists(path_to_local_data_dir)
+        # initialize data storage if required
+        if save_opt is not None:
+            self._initialize_data_saving(save_opt)
+        else:
+            self._save_strategy = None
 
         # prepare a list of scraped book records and reviews
         scraped_record_list = []
         scraped_review_list = []
-        invalid_count = 0
         for count, book_link in enumerate(book_links):
             # get the book record for the book_link
             book_record, book_reviews = self.scrape_book_data_from_link(
-                book_link, review_num=review_num)
-            # continue with this book only if a valid record was created
+                            book_link, review_num=review_num)
+            # continue only if the book data is valid and not already scraped
             if book_record is None:
-                invalid_count += 1
                 continue
-            if save_data:
-                # each record dir is named after its isbn number
-                # save a local copy only if it doesn't exist
-                path_to_record = path_to_local_data_dir + book_record['isbn']
-                if create_dir_if_not_exists(path_to_record):
-                    self._save_book_record(path_to_record, book_record, book_reviews)
-                else:
-                    print(
-                        f"Local record for '{book_record['title']}' already exisits")
+            # save data either locally or in the cloud if required
+            if save_opt is not None:
+                self._save_book_data(book_record, book_reviews)
+                
             scraped_record_list.append(book_record)
             scraped_review_list.extend(book_reviews)
             print(f'Book count: {count}')
@@ -129,6 +120,141 @@ class AmazonBookScraper():
         # return the list of book records and reviews
         return scraped_record_list, scraped_review_list
 
+    def _initialize_data_saving(self, save_opt):
+        if not isinstance(save_opt, dict):
+            raise ValueError('Save option should be a dict.')
+
+        # create the parent directory if local data storage
+        if save_opt['strategy'] == 'local':
+            self._path_to_local_data_dir = save_opt['location'] + '/raw_data'
+            self._save_strategy = 'local'
+            create_dir_if_not_exists(self._path_to_local_data_dir)
+        # initialize cloud client (boto3 for S3 bucket) if cloud storage
+        elif save_opt['strategy'] == 'cloud':
+            self._s3_client = boto3.client('s3')
+            self._s3_root_folder = 'raw_data'
+            self._s3_bucket = save_opt['location']
+            self._save_strategy = 'cloud'
+        else:
+            raise ValueError('Invalid save strategy.')
+
+    def _save_book_data(self, book_record, book_reviews):
+        if self._save_strategy:
+            if self._save_strategy == 'local':
+                # each record dir is named after its isbn number
+                # saves a local copy only if it doesn't exist
+                self._save_local_book_record(
+                        book_record, book_reviews)
+            elif save_opt['strategy'] == 'cloud':
+                # saves a copy only if it doesn't exist in cloud
+                self._save_cloud_book_record(
+                        book_record, book_reviews)
+            else:
+                raise ValueError('Invalid save strategy.') 
+
+    def _save_local_book_record(self, book_record, book_reviews):
+        """Save the book record locally."""
+        path_to_record = self._path_to_local_data_dir + '/' + book_record['isbn']
+        if not create_dir_if_not_exists(path_to_record):
+            print(
+                f"Local record for '{book_record['title']}' already exisits")
+            return
+
+        try:
+            # save the book record as a json object
+            with open(f"{path_to_record}/data.json", mode='w') as f:
+                json.dump(book_record, f)
+        except:
+            print(f"Could not save the record for {book_record['title']}")
+
+        try:
+            # save the cover page image file with isbn as name
+            image_path = path_to_record + "/" + book_record['isbn'] + ".jpg"
+            urllib.request.urlretrieve(
+                book_record['image_link'], filename=image_path)
+        except:
+            print(f"Could not save coverpage image for {book_record['title']}")
+
+        try:
+            # create the review folder
+            path_to_review_dir = path_to_record + '/reviews'
+            create_dir_if_not_exists(path_to_review_dir)
+            if isinstance(book_reviews, list):
+                # save each review as a json file
+                for i, review in enumerate(book_reviews):
+                    with open(f"{path_to_review_dir}/data{i}.json", mode='w') as f:
+                        json.dump(review, f)
+        except:
+            print(f"Could not save reviews for {book_record['title']}")
+
+    @staticmethod
+    def _is_saved_in_cloud(book_id, bucket):
+        s3 = boto3.resource('s3')
+        project_bucket = s3.Bucket(bucket)
+        for file in project_bucket.objects.all():
+            file_id_l = (file.key).split('/')
+            if file_id_l[1] == book_id:
+                return True
+        return False
+
+    @staticmethod
+    def _is_saved_in_local(book_id, path):
+        scraped_books = next(os.walk(path))[1]
+        return book_id in scraped_books
+
+    def _save_cloud_book_record(self, book_record, book_reviews):
+        """Save the book record in the cloud. 
+            Mirrors the folder structure for the local case"""
+        # do not save if the book details are already in the cloud
+        if self._is_saved_in_cloud(book_record['isbn'], self._s3_bucket):
+            print(
+                f"Cloud record for '{book_record['title']}' already exisits")
+            return
+
+        path_to_record = self._s3_root_folder + '/' + book_record['isbn']
+        # save the book record as a json object
+        file_key = path_to_record + '/data.json'
+        try:
+            self._s3_client.put_object(Bucket=self._s3_bucket,
+                                Body=json.dumps(book_record),
+                                Key=file_key)
+        except:
+            print(f"Could not save the record for {book_record['title']} in the cloud")
+
+        # save the cover page image file with isbn as name
+        # create a temp folder to save image file temporarily
+        temp_path = os.getcwd() + '/temp'
+        create_dir_if_not_exists(temp_path)
+        # retirieve the image file to a temporary local location
+        try:
+            temp_image_path = temp_path + '/tmp.jpg'
+            urllib.request.urlretrieve(
+                book_record['image_link'], filename=temp_image_path)
+        except:
+            print(f"Could retrieve coverpage image for {book_record['title']}")
+        # upload the image file to cloud
+        file_key = path_to_record + "/" + book_record['isbn'] + ".jpg"
+        try:
+            self._s3_client.upload_file(
+                temp_image_path, self._s3_bucket, file_key)
+        except:
+            print(
+                f"Could not save the image for {book_record['title']} in the cloud")
+
+        # save the reviews in reviews folder
+        # create the review folder
+        path_to_reviews = path_to_record + '/reviews'
+        if isinstance(book_reviews, list):
+            for i, review in enumerate(book_reviews):
+                try:
+                    # save each review as a json file
+                    file_key = f"{path_to_reviews}/data{i}.json"
+                    self._s3_client.put_object(Bucket=self._s3_bucket,
+                                        Body=json.dumps(review),
+                                        Key=file_key)
+                except:
+                    print(f"Could not save review {i} for {book_record['title']}")
+            
     def _sort_by_reviews(self) -> None:
         """Sort the books by the number of reviews
         TODO: recieve the sort criterion as argument
@@ -183,6 +309,18 @@ class AmazonBookScraper():
         else:
             return book_link_list
 
+    def _is_scraped(self, book_id):
+        is_saved = False
+        if self._save_strategy == 'cloud':
+            is_saved = self._is_saved_in_cloud(
+                book_id, self._s3_bucket)
+        elif self._save_strategy == 'local':
+            is_saved = self._is_saved_in_local(
+                book_id, self._path_to_local_data_dir)
+        else:
+            raise Exception
+        return is_saved
+
     def scrape_book_data_from_link(
             self, link: str,
             review_num: int = 10) -> tuple[Optional[dict], Optional[list[dict]]]:
@@ -207,6 +345,25 @@ class AmazonBookScraper():
             print('Could not open the book url.')
 
         book_record = {}
+        # get book attribute elements
+        # this includes date, pages and ISBN number
+        elements = self._get_book_attribute_elements(self._driver)
+
+        # extract the ISBN attribute from book attribute elements
+        book_record["isbn"] = self._extract_isbn_attribute(elements)
+        # check if the book is already scraped
+        is_scraped = False
+        if self._save_strategy:
+            is_scraped = self._is_scraped(book_record["isbn"])
+        # skip this book item if there is no isbn number or it is already scraped
+        if book_record['isbn'] is None or is_scraped:
+            return None, None
+
+        # extract the date attribute from book attribute elements if it exists
+        book_record["date"] = self._extract_date_attribute(elements)
+
+        # extract the pages attribute from book attribute elements if it exists
+        book_record["pages"] = self._extract_pages_attribute(elements)
 
         # get the book title
         book_record["title"] = self._get_book_title(self._driver)
@@ -219,22 +376,6 @@ class AmazonBookScraper():
 
         # get the book price
         book_record["price"] = self._get_book_price(self._driver)
-
-        # get book attribute elements
-        # this includes date, pages and ISBN number
-        elements = self._get_book_attribute_elements(self._driver)
-
-        # extract the ISBN attribute from book attribute elements
-        book_record["isbn"] = self._extract_isbn_attribute(elements)
-        # skip this record item if there is no isbn number
-        if book_record['isbn'] is None:
-            return None, None
-
-        # extract the date attribute from book attribute elements if it exists
-        book_record["date"] = self._extract_date_attribute(elements)
-
-        # extract the pages attribute from book attribute elements if it exists
-        book_record["pages"] = self._extract_pages_attribute(elements)
 
         # get product feature elements
         # this includes best seller rank, review rating and review count
@@ -266,36 +407,6 @@ class AmazonBookScraper():
             review['uuid'] = book_record['uuid']
 
         return book_record, book_reviews
-
-    @staticmethod
-    def _save_book_record(path_to_record, book_record, book_reviews):
-        """Save the book record locally."""
-        try:
-            # save the book record as a json object
-            with open(f"{path_to_record}/data.json", mode='w') as f:
-                json.dump(book_record, f)
-        except:
-            print(f"Could not save the record for {book_record['title']}")
-
-        try:
-            # save the cover page image file with isbn as name
-            image_path = path_to_record + "/" + book_record['isbn'] + ".img"
-            urllib.request.urlretrieve(
-                book_record['image_link'], filename=image_path)
-        except:
-            print(f"Could not save coverpage image for {book_record['title']}")
-
-        try:
-            # create the review folder
-            path_to_review_dir = path_to_record + '/reviews'
-            create_dir_if_not_exists(path_to_review_dir)
-            if isinstance(book_reviews, list):
-                # save each review as a json file
-                for i, review in enumerate(book_reviews):
-                    with open(f"{path_to_review_dir}/data{i}.json", mode='w') as f:
-                        json.dump(review, f)
-        except:
-            print(f"Could not save reviews for {book_record['title']}")
 
     def _go_to_next_page(self):
         """Goes to the next page if it not the last page."""
@@ -578,8 +689,16 @@ if __name__ == '__main__':
     url = "https://www.amazon.com/s?i=stripbooks&rh=n%3A25&fs=true&qid=1645782603&ref=sr_pg_1"
     banned = ["Player's Handbook", "Dungeons and Dragons"]
     amazonBookScraper = AmazonBookScraper(url, browser='firefox', banned_list=banned)
+
+    # choose one of below
+    # save_opt = None
+    # save_opt = {'strategy': 'local',
+    #             'location': os.getcwd()}
+    save_opt = {'strategy': 'cloud',                # store it in cloud
+                'location': 'aicore-web-scraping'}  # AWS S3 bucket name
     book_records, book_reviews = amazonBookScraper.scrape_books(
-        5, review_num=50, save_data=True)
+        5, save_opt=save_opt, review_num=10)
+
     print(f'Total:{len(book_records)}')
     df = pd.DataFrame(book_records)
     df.info()

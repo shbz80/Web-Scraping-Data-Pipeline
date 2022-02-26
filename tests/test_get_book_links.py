@@ -8,7 +8,7 @@ class TestGetBookLinks(unittest.TestCase):
     def setUp(self) -> None:
         # inits the scraper
         section_url = 'https://www.amazon.com/s?i=stripbooks&rh=n%3A25&fs=true&qid=1643228276&ref=sr_pg_1'
-        self.scraper = AmazonBookScraper(url=section_url)
+        self.scraper = AmazonBookScraper(url=section_url, browser='firefox')
 
     def test_link_list_type(self):
         # get some links
