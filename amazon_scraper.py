@@ -103,13 +103,25 @@ class AmazonBookScraper():
         scraped_record_list = []
         scraped_review_list = []
         for count, book_link in enumerate(book_links):
+            # check if the book has valid isbn
+            isbn = self._get_isbn_from_book_link(book_link)
+            if isbn is None:
+                continue
+            # check if the book is already scraped. This is checked
+            # either in local storage or the cloud (S3 and RDS)
+            # based on the save stratgey.
+            if self._save_strategy:
+                if self._is_scraped(isbn):
+                    continue
             # get the book record for the book_link
             book_record, book_reviews = self.scrape_book_data_from_link(
                             book_link, review_num=review_num)
             # continue only if the book data is valid and not already scraped
             if book_record is None:
                 continue
-            # save data either locally or in the cloud if required
+            # save data either locally or in the cloud based on the save strategy
+            # saves in the cloud as raw data and an RDS,
+            # both of which are expected to always match
             if save_opt is not None:
                 self._save_book_data(book_record, book_reviews)
                 
@@ -351,12 +363,8 @@ class AmazonBookScraper():
 
         # extract the ISBN attribute from book attribute elements
         book_record["isbn"] = self._extract_isbn_attribute(elements)
-        # check if the book is already scraped
-        is_scraped = False
-        if self._save_strategy:
-            is_scraped = self._is_scraped(book_record["isbn"])
-        # skip this book item if there is no isbn number or it is already scraped
-        if book_record['isbn'] is None or is_scraped:
+        # skip this book item if there is no isbn number
+        if book_record['isbn'] is None:
             return None, None
 
         # extract the date attribute from book attribute elements if it exists
