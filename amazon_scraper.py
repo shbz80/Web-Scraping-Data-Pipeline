@@ -29,7 +29,7 @@ class AmazonBookScraper():
     """
 
     def __init__(self, url: str,
-                browser: str='chrome',
+                 browser: str = 'chrome',
                 banned_list: Optional[list[str]] = None) -> None:
         """Inits Selenium driver and gets to the given url
 
@@ -54,7 +54,8 @@ class AmazonBookScraper():
             elif self._browser == 'firefox':
                 self._driver = webdriver.Firefox()
             else:
-                raise NotImplementedError('Only Chrome and Firefox are supported.')
+                raise NotImplementedError(
+                    'Only Chrome and Firefox are supported.')
         except:
             print('Selenium driver error')
         try:
@@ -179,7 +180,8 @@ class AmazonBookScraper():
 
     def _save_local_book_record(self, book_record, book_reviews):
         """Save the book record locally."""
-        path_to_record = self._path_to_local_data_dir + '/' + book_record['isbn']
+        path_to_record = self._path_to_local_data_dir + \
+            '/' + book_record['isbn']
         if not create_dir_if_not_exists(path_to_record):
             print(
                 f"Local record for '{book_record['title']}' already exisits")
@@ -237,6 +239,9 @@ class AmazonBookScraper():
         if operator.xor(in_s3, in_rds):
             raise Exception('Unmatched entry in S3 and RDS')
         return in_s3 and in_rds
+
+    def _is_saved_in_local(self, book_id):
+        scraped_books = next(os.walk(self._path_to_local_data_dir))[1]
         return book_id in scraped_books
 
     def _save_cloud_book_record(self, book_record, book_reviews):
@@ -252,7 +257,6 @@ class AmazonBookScraper():
 
         # save the book record as a json object in S3
         path_to_record = self._s3_root_folder + '/' + book_record['isbn']
-        # save the book record as a json object
         file_key = path_to_record + '/data.json'
         try:
             self._s3_client.put_object(Bucket=self._s3_bucket,
@@ -277,7 +281,6 @@ class AmazonBookScraper():
         # retirieve the image file to a temporary local location
         temp_path = os.getcwd() + '/temp'
         create_dir_if_not_exists(temp_path)
-        # retirieve the image file to a temporary local location
         try:
             temp_image_path = temp_path + '/tmp.jpg'
             urllib.request.urlretrieve(
@@ -381,6 +384,20 @@ class AmazonBookScraper():
         else:
             raise Exception
         return is_saved
+
+    def _get_isbn_from_book_link(self, link):
+        if not self._scraper_init_done:
+            raise Exception('Scraper not initialized.')
+
+        # open the book page
+        try:
+            self._driver.get(link)
+            time.sleep(PAGE_SLEEP_TIME)
+        except:
+            print('Could not open the book url.')
+
+        elements = self._get_book_attribute_elements(self._driver)
+        return self._extract_isbn_attribute(elements)
 
     def scrape_book_data_from_link(
             self, link: str,
@@ -745,7 +762,8 @@ if __name__ == '__main__':
 
     url = "https://www.amazon.com/s?i=stripbooks&rh=n%3A25&fs=true&qid=1645782603&ref=sr_pg_1"
     banned = ["Player's Handbook", "Dungeons and Dragons"]
-    amazonBookScraper = AmazonBookScraper(url, browser='firefox', banned_list=banned)
+    amazonBookScraper = AmazonBookScraper(
+        url, browser='firefox', banned_list=banned)
 
     # choose one of below
     # save_opt = None
@@ -763,7 +781,7 @@ if __name__ == '__main__':
                 'rds': rds_dict}  # AWS RDS
 
     book_records, book_reviews = amazonBookScraper.scrape_books(
-        5, save_opt=save_opt, review_num=10)
+        5, save_opt=save_opt, review_num=5)
 
     print(f'Total:{len(book_records)}')
     df = pd.DataFrame(book_records)
@@ -784,5 +802,3 @@ if __name__ == '__main__':
     df = pd.DataFrame(book_reviews)
     df.info()
     print(df.head())
-
-    
