@@ -234,28 +234,29 @@ class AmazonBookScraper():
         except:
             print(f"Could not save reviews for {book_record['title']}")
 
-    def _is_saved_in_cloud(self, book_id):
-        # check in S3
+    def _is_in_s3(self, book_id):
         s3 = boto3.resource('s3')
         project_bucket = s3.Bucket(self._s3_bucket)
-        in_s3 = False
         for file in project_bucket.objects.all():
             file_id_l = (file.key).split('/')
             if file_id_l[1] == book_id:
-                in_s3 = True
+                return True
+        return False
 
-        # check in RDS, assumes rds_engine is connected
+    def _is_in_rds(self, book_id):
+        # assumes rds_engine is connected
         insp = inspect(self._rds_engine)
         if not insp.has_table(self._rds_attribute_table):
-            in_rds = False
+            return False
         else:
-            in_rds = bool(self._rds_engine.execute(
+            return bool(self._rds_engine.execute(
                 f'''SELECT COUNT(1) FROM {self._rds_attribute_table} WHERE isbn = '{book_id}';''').fetchall()[0][0])
+
+    def _is_saved_in_cloud(self, book_id):
+        # check in S3
+        in_s3 = self._is_in_s3(book_id)
+        in_rds = self._is_in_rds(book_id)
         # it is expected S3 and RDS to be macthed
-        if in_rds:
-            print('in RDS')
-        else:
-            print('not in RDS')
         if operator.xor(in_s3, in_rds):
             raise Exception('Unmatched entry in S3 and RDS')
         return in_s3 and in_rds
