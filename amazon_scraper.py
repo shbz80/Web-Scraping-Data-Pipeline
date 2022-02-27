@@ -138,6 +138,21 @@ class AmazonBookScraper():
         # return the list of book records and reviews
         return scraped_record_list, scraped_review_list
 
+    def get_cover_page_image_from_cloud(self, book_id):
+        '''Checks is the book record exists in the RDS
+        and extracts the image from S3 bucket'''
+        if not self._is_saved_in_cloud(book_id):
+            return None
+        
+        s3 = boto3.resource('s3')
+        project_bucket = s3.Bucket(self._s3_bucket)
+        for file in project_bucket.objects.all():
+            if book_id in file.key and ".jpg" in file.key:
+                image_key = file.key
+                break
+        self._s3_client.download_file(
+            self._s3_bucket, image_key, os.getcwd() + f'/temp/{book_id}.jpg')
+                
     def _initialize_data_saving(self, save_opt):
         if not isinstance(save_opt, dict):
             raise ValueError('Save option should be a dict.')
