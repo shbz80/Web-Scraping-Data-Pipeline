@@ -141,12 +141,25 @@ class AmazonBookScraper():
             self._path_to_local_data_dir = save_opt['location'] + '/raw_data'
             self._save_strategy = 'local'
             create_dir_if_not_exists(self._path_to_local_data_dir)
-        # initialize cloud client (boto3 for S3 bucket) if cloud storage
+        # initialize cloud client (boto3 for S3 bucket) and
+        # RDS, if cloud storage
         elif save_opt['strategy'] == 'cloud':
             self._s3_client = boto3.client('s3')
             self._s3_root_folder = 'raw_data'
             self._s3_bucket = save_opt['location']
             self._save_strategy = 'cloud'
+            DATABASE_TYPE = save_opt['rds']['DATABASE_TYPE']
+            DBAPI = save_opt['rds']['DBAPI']
+            ENDPOINT = save_opt['rds']['ENDPOINT']
+            USER = save_opt['rds']['USER']
+            PASSWORD = save_opt['rds']['PASSWORD']
+            PORT = save_opt['rds']['PORT']
+            DATABASE = save_opt['rds']['DATABASE']
+            self._rds_engine = create_engine(
+                f"{DATABASE_TYPE}+{DBAPI}://{USER}:{PASSWORD}@{ENDPOINT}:{PORT}/{DATABASE}")
+            self._rds_engine.connect()
+            self._rds_attribute_table = 'book_attributes'
+            self._rds_review_table = 'book_reviews'
         else:
             raise ValueError('Invalid save strategy.')
 
@@ -199,30 +212,45 @@ class AmazonBookScraper():
         except:
             print(f"Could not save reviews for {book_record['title']}")
 
-    @staticmethod
-    def _is_saved_in_cloud(book_id, bucket):
+    def _is_saved_in_cloud(self, book_id):
+        # check in S3
         s3 = boto3.resource('s3')
-        project_bucket = s3.Bucket(bucket)
+        project_bucket = s3.Bucket(self._s3_bucket)
+        in_s3 = False
         for file in project_bucket.objects.all():
             file_id_l = (file.key).split('/')
             if file_id_l[1] == book_id:
-                return True
-        return False
+                in_s3 = True
 
-    @staticmethod
-    def _is_saved_in_local(book_id, path):
-        scraped_books = next(os.walk(path))[1]
+        # check in RDS, assumes rds_engine is connected
+        insp = inspect(self._rds_engine)
+        if not insp.has_table(self._rds_attribute_table):
+            in_rds = False
+        else:
+            in_rds = bool(self._rds_engine.execute(
+                f'''SELECT COUNT(1) FROM {self._rds_attribute_table} WHERE isbn = '{book_id}';''').fetchall()[0][0])
+        # it is expected S3 and RDS to be macthed
+        if in_rds:
+            print('in RDS')
+        else:
+            print('not in RDS')
+        if operator.xor(in_s3, in_rds):
+            raise Exception('Unmatched entry in S3 and RDS')
+        return in_s3 and in_rds
         return book_id in scraped_books
 
     def _save_cloud_book_record(self, book_record, book_reviews):
-        """Save the book record in the cloud. 
-            Mirrors the folder structure for the local case"""
+        """Save the book record in the cloud."""
+        if not (self._s3_client and self._rds_engine):
+            raise Exception('Cloud storage not initialized')
+
         # do not save if the book details are already in the cloud
-        if self._is_saved_in_cloud(book_record['isbn'], self._s3_bucket):
+        if self._is_saved_in_cloud(book_record['isbn']):
             print(
                 f"Cloud record for '{book_record['title']}' already exisits")
             return
 
+        # save the book record as a json object in S3
         path_to_record = self._s3_root_folder + '/' + book_record['isbn']
         # save the book record as a json object
         file_key = path_to_record + '/data.json'
@@ -231,10 +259,22 @@ class AmazonBookScraper():
                                 Body=json.dumps(book_record),
                                 Key=file_key)
         except:
-            print(f"Could not save the record for {book_record['title']} in the cloud")
+            print(
+                f"Could not save the record for {book_record['title']} in S3")
 
-        # save the cover page image file with isbn as name
-        # create a temp folder to save image file temporarily
+        # save the book record in RDS
+        book_record_df = pd.DataFrame([book_record])
+        try:
+            book_record_df.to_sql(
+                self._rds_attribute_table,
+                self._rds_engine, if_exists='append',
+                index=False)
+        except:
+            print(
+                f"Could not save the record for {book_record['title']} in RDS")
+
+        # save the cover page image file with isbn as name in S3
+        # retirieve the image file to a temporary local location
         temp_path = os.getcwd() + '/temp'
         create_dir_if_not_exists(temp_path)
         # retirieve the image file to a temporary local location
@@ -244,19 +284,17 @@ class AmazonBookScraper():
                 book_record['image_link'], filename=temp_image_path)
         except:
             print(f"Could retrieve coverpage image for {book_record['title']}")
-        # upload the image file to cloud
+        # upload the image file to cloud (S3)
         file_key = path_to_record + "/" + book_record['isbn'] + ".jpg"
         try:
             self._s3_client.upload_file(
                 temp_image_path, self._s3_bucket, file_key)
         except:
             print(
-                f"Could not save the image for {book_record['title']} in the cloud")
+                f"Could not save the image for {book_record['title']} in S3")
 
-        # save the reviews in reviews folder
-        # create the review folder
+        # save the reviews in S3
         path_to_reviews = path_to_record + '/reviews'
-        if isinstance(book_reviews, list):
             for i, review in enumerate(book_reviews):
                 try:
                     # save each review as a json file
@@ -265,7 +303,20 @@ class AmazonBookScraper():
                                         Body=json.dumps(review),
                                         Key=file_key)
                 except:
-                    print(f"Could not save review {i} for {book_record['title']}")
+                print(
+                    f"Could not save review {i} for {book_record['title']} in S3")
+
+        # save the reviews in RDS
+        book_reviews_df = pd.DataFrame(book_reviews)
+        try:
+            book_reviews_df.to_sql(
+                self._rds_review_table,
+                self._rds_engine,
+                if_exists='append',
+                index=False)
+        except:
+            print(
+                f"Could not save reviews for {book_record['title']} in RDS")
             
     def _sort_by_reviews(self) -> None:
         """Sort the books by the number of reviews
@@ -324,11 +375,9 @@ class AmazonBookScraper():
     def _is_scraped(self, book_id):
         is_saved = False
         if self._save_strategy == 'cloud':
-            is_saved = self._is_saved_in_cloud(
-                book_id, self._s3_bucket)
+            is_saved = self._is_saved_in_cloud(book_id)
         elif self._save_strategy == 'local':
-            is_saved = self._is_saved_in_local(
-                book_id, self._path_to_local_data_dir)
+            is_saved = self._is_saved_in_local(book_id)
         else:
             raise Exception
         return is_saved
@@ -702,8 +751,17 @@ if __name__ == '__main__':
     # save_opt = None
     # save_opt = {'strategy': 'local',
     #             'location': os.getcwd()}
+    rds_dict = {'DATABASE_TYPE': 'postgresql',
+                'DBAPI': 'psycopg2',
+                'ENDPOINT': "aicore-webscraping-db.cwckuebjlobx.us-east-1.rds.amazonaws.com",
+                'USER': 'postgres',
+                'PASSWORD': 'aicore2022',
+                'PORT': 5432,
+                'DATABASE': 'postgres'}
     save_opt = {'strategy': 'cloud',                # store it in cloud
-                'location': 'aicore-web-scraping'}  # AWS S3 bucket name
+                'location': 'aicore-web-scraping',  # AWS S3 bucket name
+                'rds': rds_dict}  # AWS RDS
+
     book_records, book_reviews = amazonBookScraper.scrape_books(
         5, save_opt=save_opt, review_num=10)
 
