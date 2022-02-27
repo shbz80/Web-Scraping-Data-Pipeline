@@ -754,8 +754,12 @@ class AmazonBookScraper():
         reviews = []
         for element in elements:
             xpath = './/span[@data-hook="review-body"]/span'
+            try:
             review_text = element.find_element_by_xpath(xpath).text
+            except:
+                review_text = None
             xpath = './div/div/div/a[@class="a-link-normal"]'
+            try:
             review_rating_text = element.find_element_by_xpath(
                 xpath).get_attribute('title')
             rating_l = review_rating_text.split(" ")
@@ -764,6 +768,8 @@ class AmazonBookScraper():
             assert(rating_l[3] == '5')
             assert(rating_l[4] == 'stars')
             review_rating = int(float(rating_l[0]))
+            except:
+                review_rating = None
             reviews.append({'text': review_text, 'rating': review_rating})
         return reviews
 
