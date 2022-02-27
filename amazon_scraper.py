@@ -4,16 +4,19 @@ a specific category in Amazon.com.
 import os
 from typing import Any, Union, Optional
 import time
+import operator
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 import uuid
 import json
 import urllib.request
 import boto3
+from sqlalchemy import create_engine, inspect
 from utils import create_dir_if_not_exists
 
 # the number of seconds to sleep after a click to a new page
 PAGE_SLEEP_TIME = 1
+
 
 class AmazonBookScraper():
     """Scrapes any number of books from a ctaegory after sorting by a 
