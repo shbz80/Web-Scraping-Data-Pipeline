@@ -7,13 +7,13 @@ import time
 import operator
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+import pandas as pd
 import uuid
 import json
 import urllib.request
 import boto3
 from sqlalchemy import create_engine, inspect
 from utils import create_dir_if_not_exists
-
 # the number of seconds to sleep after a click to a new page
 PAGE_SLEEP_TIME = 1
 
@@ -777,51 +777,3 @@ class AmazonBookScraper():
             return True
         else:
             return False
-
-
-if __name__ == '__main__':
-    import pandas as pd
-    import os
-
-    url = "https://www.amazon.com/s?i=stripbooks&rh=n%3A25&fs=true&qid=1645782603&ref=sr_pg_1"
-    banned = ["Player's Handbook", "Dungeons and Dragons"]
-    amazonBookScraper = AmazonBookScraper(
-        url, browser='firefox', banned_list=banned)
-
-    # choose one of below
-    # save_opt = None
-    # save_opt = {'strategy': 'local',
-    #             'location': os.getcwd()}
-    rds_dict = {'DATABASE_TYPE': 'postgresql',
-                'DBAPI': 'psycopg2',
-                'ENDPOINT': "aicore-webscraping-db.cwckuebjlobx.us-east-1.rds.amazonaws.com",
-                'USER': 'postgres',
-                'PASSWORD': 'aicore2022',
-                'PORT': 5432,
-                'DATABASE': 'postgres'}
-    save_opt = {'strategy': 'cloud',                # store it in cloud
-                'location': 'aicore-web-scraping',  # AWS S3 bucket name
-                'rds': rds_dict}  # AWS RDS
-
-    book_records, book_reviews = amazonBookScraper.scrape_books(
-        5, save_opt=save_opt, review_num=5)
-
-    print(f'Total:{len(book_records)}')
-    df = pd.DataFrame(book_records)
-    df.info()
-    print(df["title"].head())
-    print(df["author(s)"].head())
-    print(df["best_seller_rank"].head())
-    print(df["review_count"].head())
-    print(df["review_rating"].head())
-    print(df["description"].head())
-    print(df["pages"].head())
-    print(df["price"].head())
-    print(df["date"].head())
-    print(df["image_link"].head())
-    print(df["uuid"].head())
-    print(df["isbn"].head())
-
-    df = pd.DataFrame(book_reviews)
-    df.info()
-    print(df.head())
