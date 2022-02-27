@@ -191,7 +191,7 @@ class AmazonBookScraper():
                 # saves a local copy only if it doesn't exist
                 self._save_local_book_record(
                         book_record, book_reviews)
-            elif save_opt['strategy'] == 'cloud':
+            elif self._save_strategy == 'cloud':
                 # saves a copy only if it doesn't exist in cloud
                 self._save_cloud_book_record(
                         book_record, book_reviews)
