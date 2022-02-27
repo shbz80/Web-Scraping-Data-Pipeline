@@ -108,6 +108,7 @@ class AmazonBookScraper():
         scraped_review_list = []
         for count, book_link in enumerate(book_links):
             # check if the book has valid isbn
+            # this has side effect: the driver points to the page
             isbn = self._get_isbn_from_book_link(book_link)
             if isbn is None:
                 continue
@@ -118,8 +119,9 @@ class AmazonBookScraper():
                 if self._is_scraped(isbn):
                     continue
             # get the book record for the book_link
+            # the driver already points to the page
             book_record, book_reviews = self.scrape_book_data_from_link(
-                            book_link, review_num=review_num)
+                review_num=review_num)
             # continue only if the book data is valid and not already scraped
             if book_record is None:
                 continue
@@ -403,18 +405,20 @@ class AmazonBookScraper():
         return self._extract_isbn_attribute(elements)
 
     def scrape_book_data_from_link(
-            self, link: str,
+            self, link: Optional[str] = None,
             review_num: int = 10) -> tuple[Optional[dict], Optional[list[dict]]]:
         """Returns a dict with book attributes for a single book
 
         Args:
-            link (str): url to the book webpage
+            link (str): url to the book webpage. Assumes the driver already
+                        points to the page if None
             review_num (int): max number of reviews to scrape for each book
 
         Returns:
             Optional[dict]: dict record of a valid book
             Optional[list[dict]]: list of dict reviews a valid book
         """
+        if link:
         if not self._scraper_init_done:
             raise Exception('Scraper not initialized.')
 
