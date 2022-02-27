@@ -461,7 +461,7 @@ class AmazonBookScraper():
         book_reviews = self._get_book_reviews(self._driver, num=review_num)
         # append the book's uuid for all reviews
         for review in book_reviews:
-            review['uuid'] = book_record['uuid']
+            review['isbn'] = book_record['isbn']
 
         return book_record, book_reviews
 
