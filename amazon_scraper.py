@@ -15,7 +15,7 @@ import boto3
 from sqlalchemy import create_engine, inspect
 from utils import create_dir_if_not_exists
 # the number of seconds to sleep after a click to a new page
-PAGE_SLEEP_TIME = 1
+PAGE_SLEEP_TIME = 1.5
 
 
 class AmazonBookScraper():
@@ -33,7 +33,7 @@ class AmazonBookScraper():
 
     def __init__(self, url: str,
                  browser: str = 'chrome',
-                banned_list: Optional[list[str]] = None) -> None:
+                 banned_list: Optional[list[str]] = None) -> None:
         """Inits Selenium driver and gets to the given url
 
         Sorts the books by the criterion: number of reviews.
@@ -69,10 +69,10 @@ class AmazonBookScraper():
         self._sort_by_reviews()
         self._scraper_init_done = True
 
-    def scrape_books(self, 
-                num_books: int,
-                save_opt: Optional[dict] = None,
-                review_num=10) -> tuple[list[dict], list[dict]]:
+    def scrape_books(self,
+                     num_books: int,
+                     save_opt: Optional[dict] = None,
+                     review_num=10) -> tuple[list[dict], list[dict]]:
         """The main method that acquires the required number of
         book records and reviews. It returns two lists of items:
         1) list of scraped book attributes except reviews (records)
@@ -111,6 +111,7 @@ class AmazonBookScraper():
             # this has side effect: the driver points to the page
             isbn = self._get_isbn_from_book_link(book_link)
             if isbn is None:
+                print(f'Book count: {count}')
                 continue
             # check if the book is already scraped. This is checked
             # either in local storage or the cloud (S3 and RDS)
@@ -130,7 +131,7 @@ class AmazonBookScraper():
             # both of which are expected to always match
             if save_opt is not None:
                 self._save_book_data(book_record, book_reviews)
-                
+
             scraped_record_list.append(book_record)
             scraped_review_list.extend(book_reviews)
             print(f'Book count: {count}')
@@ -190,13 +191,13 @@ class AmazonBookScraper():
                 # each record dir is named after its isbn number
                 # saves a local copy only if it doesn't exist
                 self._save_local_book_record(
-                        book_record, book_reviews)
+                    book_record, book_reviews)
             elif self._save_strategy == 'cloud':
                 # saves a copy only if it doesn't exist in cloud
                 self._save_cloud_book_record(
-                        book_record, book_reviews)
+                    book_record, book_reviews)
             else:
-                raise ValueError('Invalid save strategy.') 
+                raise ValueError('Invalid save strategy.')
 
     def _save_local_book_record(self, book_record, book_reviews):
         """Save the book record locally."""
@@ -281,8 +282,8 @@ class AmazonBookScraper():
         file_key = path_to_record + '/data.json'
         try:
             self._s3_client.put_object(Bucket=self._s3_bucket,
-                                Body=json.dumps(book_record),
-                                Key=file_key)
+                                       Body=json.dumps(book_record),
+                                       Key=file_key)
         except:
             print(
                 f"Could not save the record for {book_record['title']} in S3")
@@ -319,14 +320,14 @@ class AmazonBookScraper():
 
         # save the reviews in S3
         path_to_reviews = path_to_record + '/reviews'
-            for i, review in enumerate(book_reviews):
-                try:
-                    # save each review as a json file
-                    file_key = f"{path_to_reviews}/data{i}.json"
-                    self._s3_client.put_object(Bucket=self._s3_bucket,
-                                        Body=json.dumps(review),
-                                        Key=file_key)
-                except:
+        for i, review in enumerate(book_reviews):
+            try:
+                # save each review as a json file
+                file_key = f"{path_to_reviews}/data{i}.json"
+                self._s3_client.put_object(Bucket=self._s3_bucket,
+                                           Body=json.dumps(review),
+                                           Key=file_key)
+            except:
                 print(
                     f"Could not save review {i} for {book_record['title']} in S3")
 
@@ -341,7 +342,7 @@ class AmazonBookScraper():
         except:
             print(
                 f"Could not save reviews for {book_record['title']} in RDS")
-            
+
     def _sort_by_reviews(self) -> None:
         """Sort the books by the number of reviews
         TODO: recieve the sort criterion as argument
@@ -435,15 +436,15 @@ class AmazonBookScraper():
             Optional[list[dict]]: list of dict reviews a valid book
         """
         if link:
-        if not self._scraper_init_done:
-            raise Exception('Scraper not initialized.')
+            if not self._scraper_init_done:
+                raise Exception('Scraper not initialized.')
 
-        # open the book page
-        try:
-            self._driver.get(link)
-            time.sleep(PAGE_SLEEP_TIME)
-        except:
-            print('Could not open the book url.')
+            # open the book page
+            try:
+                self._driver.get(link)
+                time.sleep(PAGE_SLEEP_TIME)
+            except:
+                print('Could not open the book url.')
 
         book_record = {}
         # get book attribute elements
@@ -458,6 +459,11 @@ class AmazonBookScraper():
 
         # extract the date attribute from book attribute elements if it exists
         book_record["date"] = self._extract_date_attribute(elements)
+
+        # extract the language attribute from book attribute elements if it exists
+        language = self._extract_language_attribute(elements)
+        if language != 'English':
+            return None, None
 
         # extract the pages attribute from book attribute elements if it exists
         book_record["pages"] = self._extract_pages_attribute(elements)
@@ -567,22 +573,26 @@ class AmazonBookScraper():
 
     def _get_book_price(self, driver):
         """Gets the book's hardcover price"""
-        xpath = '//div[@id="tmmSwatches"]'
-        element = driver.find_element_by_xpath(xpath)
-        price_str = element.text
-        price_l = price_str.split('\n')
-        if 'Paperback' in price_l:
-            option = 'Paperback'
-        elif 'Mass Market Paperback' in price_l:
-            option = 'Mass Market Paperback'
-        elif 'Hardcover' in price_l:
-            option = 'Hardcover'
-        else:
-            return None
-        i = price_l.index(option)
-        price_str = price_l[i + 1]
-        i = price_str.index('$')
-        price = float(price_str[i+1:])
+        price = None
+        try:
+            xpath = '//div[@id="tmmSwatches"]'
+            element = driver.find_element_by_xpath(xpath)
+            price_str = element.text
+            price_l = price_str.split('\n')
+            if 'Paperback' in price_l:
+                option = 'Paperback'
+            elif 'Mass Market Paperback' in price_l:
+                option = 'Mass Market Paperback'
+            elif 'Hardcover' in price_l:
+                option = 'Hardcover'
+            else:
+                return None
+            i = price_l.index(option)
+            price_str = price_l[i + 1]
+            i = price_str.index('$')
+            price = float(price_str[i+1:])
+        except:
+            pass
         return price
 
     def _get_book_attribute_elements(self, driver):
@@ -592,7 +602,7 @@ class AmazonBookScraper():
         return elements
 
     def _extract_date_attribute(self, elements):
-        """Extracts the book title from a list of book attribute elements.
+        """Extracts the book date from a list of book attribute elements.
         Return None if date attribute not found
         """
         date = None
@@ -615,6 +625,17 @@ class AmazonBookScraper():
                 # removes a comma
                 date = "".join(date.split(","))
         return date
+
+    def _extract_language_attribute(self, elements):
+        """Extracts the book language from a list of book attribute elements.
+        Return None if date attribute not found
+        """
+        language = None
+        for element in elements:
+            items = element.find_elements_by_xpath('./span/span')
+            if "Language" in items[0].text:
+                language = items[1].text
+        return language
 
     def _extract_pages_attribute(self, elements):
         """Extracts the page numbers from a list of book attribute elements.
@@ -755,19 +776,19 @@ class AmazonBookScraper():
         for element in elements:
             xpath = './/span[@data-hook="review-body"]/span'
             try:
-            review_text = element.find_element_by_xpath(xpath).text
+                review_text = element.find_element_by_xpath(xpath).text
             except:
                 review_text = None
             xpath = './div/div/div/a[@class="a-link-normal"]'
             try:
-            review_rating_text = element.find_element_by_xpath(
-                xpath).get_attribute('title')
-            rating_l = review_rating_text.split(" ")
-            assert(rating_l[1] == 'out')
-            assert(rating_l[2] == 'of')
-            assert(rating_l[3] == '5')
-            assert(rating_l[4] == 'stars')
-            review_rating = int(float(rating_l[0]))
+                review_rating_text = element.find_element_by_xpath(
+                    xpath).get_attribute('title')
+                rating_l = review_rating_text.split(" ")
+                assert(rating_l[1] == 'out')
+                assert(rating_l[2] == 'of')
+                assert(rating_l[3] == '5')
+                assert(rating_l[4] == 'stars')
+                review_rating = int(float(rating_l[0]))
             except:
                 review_rating = None
             reviews.append({'text': review_text, 'rating': review_rating})

@@ -3,7 +3,7 @@ import pandas as pd
 from amazon_scraper import AmazonBookScraper
 
 url = "https://www.amazon.com/s?i=stripbooks&rh=n%3A25&fs=true&qid=1645782603&ref=sr_pg_1"
-banned = ["Player's Handbook", "Dungeons and Dragons"]
+banned = ["Player's Handbook", "Dungeons and Dragons", "Dungeons & Dragons"]
 amazonBookScraper = AmazonBookScraper(
     url, browser='firefox', banned_list=banned)
 
@@ -23,12 +23,9 @@ save_opt = {'strategy': 'cloud',                # store it in cloud
             'rds': rds_dict}  # AWS RDS
 
 book_records, book_reviews = amazonBookScraper.scrape_books(
-    10, save_opt=save_opt, review_num=50)
+    1000, save_opt=save_opt, review_num=10)
 
 df = pd.DataFrame(book_records)
-df.info()
-print(df.head())
-df = pd.DataFrame(book_reviews)
 df.info()
 print(df.head())
 
@@ -44,6 +41,10 @@ print(df["date"].head())
 print(df["image_link"].head())
 print(df["uuid"].head())
 print(df["isbn"].head())
+
+df = pd.DataFrame(book_reviews)
+df.info()
+print(df.head())
 
 # book_id = 'ISBN-13-978-1408856772'
 # amazonBookScraper.get_cover_page_image_from_cloud(book_id)
