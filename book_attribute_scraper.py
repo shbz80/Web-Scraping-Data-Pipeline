@@ -44,8 +44,13 @@ class BookAttributeScraper(ABC):
         if isbn is None: 
             return None
         title = self._extract_title_attribute(driver)
+        # if any of the banned phrases appear in the tile
+        # drop the book
         if title is None or title in self._banned_titles:
             return None
+        for banned_title in self._banned_titles:
+            if banned_title in title:
+                return None
         language = self._extract_language_attribute(driver)
         if language is None:
             return None
