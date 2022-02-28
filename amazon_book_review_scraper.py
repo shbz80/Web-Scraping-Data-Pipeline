@@ -1,7 +1,9 @@
 """Provides the Amazon specific review sraper for a single page."""
+import time
 from selenium import webdriver
 from entities import Review
 from book_review_scraper import BookReviewScraper
+from utils import PAGE_SLEEP_TIME
 
 class AmazonBookReviewScraper(BookReviewScraper):
     """Amazon specific review sraper for a single page"""
@@ -25,6 +27,7 @@ class AmazonBookReviewScraper(BookReviewScraper):
         if not driver and url:
             driver = webdriver.Firefox()
             driver.get(url)
+            time.sleep(PAGE_SLEEP_TIME)
         # get a list of review elements in the current page
         xpath = '//div[@id="cm_cr-review_list"]/div[@data-hook="review"]'
         elements = driver.find_elements_by_xpath(xpath)

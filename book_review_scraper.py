@@ -1,7 +1,9 @@
 """Provides classes for review scraping."""
 from abc import ABC, abstractmethod
+import time
 from selenium import webdriver
 from entities import Review
+from utils import PAGE_SLEEP_TIME
 
 class BookReviewScraper(ABC):
     """Abstract class for scraping reviews on a single page."""
@@ -37,6 +39,7 @@ class AutomatedBookReviewScraper(BookReviewScraper):
         if not driver and url:
             driver = webdriver.Firefox()
             driver.get(url)
+            time.sleep(PAGE_SLEEP_TIME)
 
         self._get_to_first_review_page(driver)
         reviews = []
