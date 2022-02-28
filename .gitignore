@@ -1,2 +1,4 @@
 raw_data/
 tests/raw_data/
+temp/
+*.log
