@@ -2,6 +2,10 @@
 """
 import os
 
+# some constants
+PAGE_SLEEP_TIME = 1.5
+
+# some functions
 def create_dir_if_not_exists(dir: str) -> bool:
     """Creates a directory at the given path if it doesn't exist
 
