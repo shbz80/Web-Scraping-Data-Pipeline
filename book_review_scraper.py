@@ -26,7 +26,7 @@ class AutomatedBookReviewScraper(BookReviewScraper):
 
         Args:
             num (int, optional): number of reviews to scrape.
-            driver (webdriver, optional): webdriver pointing to the book url
+            driver (webdriver, optional): webdriver ponting to the book page
             url (str, optional): the book url
             skip_users (list[str], optional): list of user reviews to skip
 

@@ -28,15 +28,15 @@ class BookAttributeScraper(ABC):
 
         Args:
             url (str): book url
-            driver (webdriver, optional): webdriver pointing to the book page
+            driver (webdriver, optional): webdriver
 
         Returns:
             Optional[BookAttribute]: scraped BookAttribute object
         """
         if not driver:
             driver = webdriver.Firefox()
-            driver.get(url)
-            time.sleep(PAGE_SLEEP_TIME)
+        driver.get(url)
+        time.sleep(PAGE_SLEEP_TIME)
 
         self._initialize(driver)
 

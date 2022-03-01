@@ -3,7 +3,7 @@
 import os
 
 # some constants
-PAGE_SLEEP_TIME = 1.5
+PAGE_SLEEP_TIME = 1
 
 # some functions
 def create_dir_if_not_exists(dir: str) -> bool:
