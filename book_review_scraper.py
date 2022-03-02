@@ -1,5 +1,6 @@
 """Provides classes for review scraping."""
 from abc import ABC, abstractmethod
+from os import NGROUPS_MAX
 import time
 from selenium import webdriver
 from entities import Review
@@ -43,8 +44,14 @@ class AutomatedBookReviewScraper(BookReviewScraper):
 
         self._get_to_first_review_page(driver)
         reviews = []
+        
+        if len(skip_users) >= num:
+            num_reviews = 0
+        else:
+            num_reviews = num - len(skip_users)
+        
         # scrape at least num reviews
-        while len(reviews) < num:
+        while len(reviews) < num_reviews:
             reviews.extend(
                 self.scrape_reviews_from_curr_page(
                     driver=driver, skip_users=skip_users))
@@ -53,7 +60,7 @@ class AutomatedBookReviewScraper(BookReviewScraper):
                 break
         review_count = len(reviews)
         # remove excess reviews and return
-        return reviews[:num if num < review_count else review_count]
+        return reviews[:num_reviews if num_reviews < review_count else review_count]
 
     @staticmethod
     @abstractmethod

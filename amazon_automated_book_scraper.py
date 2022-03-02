@@ -4,6 +4,7 @@ from selenium.webdriver.common.by import By
 from automated_book_scraper import AutomatedBookScraper
 from amazon_book_attribute_scraper import AmazonBookAttributeScraper
 from amazon_automated_book_review_scraper import AmazonAutomatedBookReviewScraper
+from raw_data_storage import RawDataStorage
 from utils import PAGE_SLEEP_TIME
 
 class AmazonAutomatedBookScraper(AutomatedBookScraper):
@@ -11,11 +12,13 @@ class AmazonAutomatedBookScraper(AutomatedBookScraper):
     def __init__(self, url: str, 
             book_attribute_scraper: AmazonBookAttributeScraper, 
             automated_book_review_scraper: AmazonAutomatedBookReviewScraper, 
+            raw_data_storage: RawDataStorage,
             browser: str = 'chrome', 
             banned_titles: list[str] = None) -> None:
         super().__init__(url, 
                 book_attribute_scraper,
                 automated_book_review_scraper,
+                raw_data_storage,
                 browser, banned_titles)
         self._sort_by_reviews()
 
@@ -80,3 +83,18 @@ class AmazonAutomatedBookScraper(AutomatedBookScraper):
             time.sleep(PAGE_SLEEP_TIME)
         except:
             print('Failed to click on the sort option')
+
+if __name__=='__main__':
+    from os import getcwd
+    from local_raw_data_storage import LocalRawDataStorage
+    url = "https://www.amazon.com/s?i=stripbooks&rh=n%3A25&fs=true&qid=1645782603&ref=sr_pg_1"
+    abas = AmazonBookAttributeScraper()
+    aabrs = AmazonAutomatedBookReviewScraper()
+    storage = LocalRawDataStorage(path=getcwd())
+    aabs = AmazonAutomatedBookScraper(
+                                    url=url,
+                                    book_attribute_scraper=abas,
+                                    automated_book_review_scraper=aabrs,
+                                    raw_data_storage=storage,
+                                    browser='firefox')
+    aabs.scrape_books(num_books=2, num_reviews=7)

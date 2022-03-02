@@ -4,7 +4,7 @@ import os
 from os import listdir, walk
 from os.path import isfile, join
 # some constants
-PAGE_SLEEP_TIME = 1
+PAGE_SLEEP_TIME = 1.5
 
 # some functions
 def create_dir_if_not_exists(dir: str) -> bool:

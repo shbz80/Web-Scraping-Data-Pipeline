@@ -5,6 +5,7 @@ from selenium import webdriver
 from entities import Book
 from book_attribute_scraper import BookAttributeScraper
 from book_review_scraper import AutomatedBookReviewScraper
+from raw_data_storage import RawDataStorage
 from utils import PAGE_SLEEP_TIME
 
 class AutomatedBookScraper(ABC):
@@ -17,6 +18,7 @@ class AutomatedBookScraper(ABC):
             self, url: str, 
             book_attribute_scraper: BookAttributeScraper,
             automated_book_review_scraper: AutomatedBookReviewScraper,
+            raw_data_storage: RawDataStorage,
             browser: str = 'chrome',
             banned_titles: list[str] = None) -> None:
         """_summary_
@@ -26,12 +28,14 @@ class AutomatedBookScraper(ABC):
             book_attribute_scraper (BookAttributeScraper): scraper for a book
             automated_book_review_scraper (AutomatedBookReviewScraper): 
                     scraper for a book reviews
+            raw_data_storage (RawDataStorage): object for saving raw data
             browser (str, optional): select the browser.
             banned_titles (list[str], optional): specify any banned phrases in
                     the title.
         """
         self._book_attribute_scraper = book_attribute_scraper
         self._automated_book_review_scraper = automated_book_review_scraper
+        self._raw_data_storage = raw_data_storage
 
         if banned_titles is None:
             self._banned_titles = []
@@ -68,7 +72,7 @@ class AutomatedBookScraper(ABC):
             list[Book]: _description_
         """
         scraped_books = []
-        saved_ulrs = self._get_saved_urls()
+        saved_ulrs = self._get_saved_urls(num_reviews=num_reviews)
 
         if num_books > len(saved_ulrs):
             num_books_to_scrape = num_books - len(saved_ulrs)
@@ -94,6 +98,10 @@ class AutomatedBookScraper(ABC):
             book_reviews = self._automated_book_review_scraper.scrape_book_reviews(
                     num=num_reviews, driver=self._driver, skip_users=saved_reviews)
             scraped_book = Book(attributes=book_attribute, reviews=book_reviews)
+            self._raw_data_storage.save_book(scraped_book)
+            image_url = scraped_book.attributes.image_url
+            book_isbn = scraped_book.attributes.isbn
+            self._raw_data_storage.save_book_image(image_url, book_isbn)
             scraped_books.append(scraped_book)
 
         return scraped_books
@@ -120,16 +128,16 @@ class AutomatedBookScraper(ABC):
     def _remove_saved_urls(urls, saved_ulrs):
         return [item for item in urls if item not in saved_ulrs]
 
-    def _get_saved_urls(self):
-        # retireve the list of scraped urls from storage that does not 
-        # already satisfy the num_reviews requirement
-        # return ['https://www.amazon.com/Midnight-Library-Novel-Matt-Haig/dp/0525559477/']
-        return []
+    def _get_saved_urls(self, num_reviews):
+        """Retireve the list of scraped urls from storage that does not 
+        already satisfy the num_reviews requirement"""
+        saved_urls = self._raw_data_storage.get_saved_book_urls(num_reviews)
+        return saved_urls
 
     def _get_saved_reviews(self, isbn):
-        # retrieves the list of saved reviews for the given book (isbn)
-        # return ['Patrick F']
-        return []
+        """Retrieves the list of saved reviews for the given book (isbn)"""
+        users = self._raw_data_storage.get_saved_review_users(isbn)
+        return users
 
     @abstractmethod
     def _get_book_urls_from_page(self):

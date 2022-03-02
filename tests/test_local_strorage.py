@@ -48,5 +48,3 @@ class TestLocalRawDataStorage(unittest.TestCase):
         self.assertEqual(saved_users[0], 'user')
 
 
-
-        
