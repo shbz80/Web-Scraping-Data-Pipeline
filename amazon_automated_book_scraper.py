@@ -87,14 +87,17 @@ class AmazonAutomatedBookScraper(AutomatedBookScraper):
 if __name__=='__main__':
     from os import getcwd
     from local_raw_data_storage import LocalRawDataStorage
+    from s3_raw_data_storage import S3RawDataStorage
+
     url = "https://www.amazon.com/s?i=stripbooks&rh=n%3A25&fs=true&qid=1645782603&ref=sr_pg_1"
     abas = AmazonBookAttributeScraper()
     aabrs = AmazonAutomatedBookReviewScraper()
-    storage = LocalRawDataStorage(path=getcwd())
+    # storage = LocalRawDataStorage(path=getcwd())
+    storage = S3RawDataStorage(path=None, bucket='aicore-web-scraping')
     aabs = AmazonAutomatedBookScraper(
                                     url=url,
                                     book_attribute_scraper=abas,
                                     automated_book_review_scraper=aabrs,
                                     raw_data_storage=storage,
                                     browser='firefox')
-    aabs.scrape_books(num_books=2, num_reviews=7)
+    aabs.scrape_books(num_books=11, num_reviews=5)

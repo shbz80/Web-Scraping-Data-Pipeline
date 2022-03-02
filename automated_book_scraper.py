@@ -85,7 +85,7 @@ class AutomatedBookScraper(ABC):
         urls_to_scrape = self._get_urls_to_scrape(
                 num_books_to_scrape, saved_ulrs)
 
-        for book_url in urls_to_scrape:
+        for i, book_url in enumerate(urls_to_scrape):
             # driver need not point to the page
             # side-effect: webdriver points to the book page
             book_attribute = \
@@ -103,6 +103,7 @@ class AutomatedBookScraper(ABC):
             book_isbn = scraped_book.attributes.isbn
             self._raw_data_storage.save_book_image(image_url, book_isbn)
             scraped_books.append(scraped_book)
+            print(f"{len(urls_to_scrape)- i - 1} remaining books")
 
         return scraped_books
 

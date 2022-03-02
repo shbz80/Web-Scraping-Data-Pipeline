@@ -1,6 +1,5 @@
 """Provides the implementation of the local raw data storage class"""
 import dataclasses
-from os import  getcwd
 from os.path import join
 import json
 import urllib.request
@@ -12,7 +11,7 @@ from utils import get_list_of_dirs, is_dir_present
 class LocalRawDataStorage(RawDataStorage):
     """This class provides methods for storing and retrieving scraped book
     data on the local machine. The object can be passed into the 
-    main acraper object"""
+    main scraper object"""
     def __init__(self, path: str) -> None:
         """
         Args:
