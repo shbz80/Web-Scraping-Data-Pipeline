@@ -1,3 +1,4 @@
+"""Provides the implementation of the local raw data storage class"""
 import dataclasses
 from os import  getcwd
 from os.path import join
@@ -9,19 +10,39 @@ from utils import create_dir_if_not_exists, get_list_of_files
 from utils import get_list_of_dirs, is_dir_present
 
 class LocalRawDataStorage(RawDataStorage):
+    """This class provides methods for storing and retrieving scraped book
+    data on the local machine. The object can be passed into the 
+    main acraper object"""
     def __init__(self, path: str) -> None:
+        """
+        Args:
+            path (str): path to where the 'raw_data' folder containing all
+            the scraped datashould be stored.
+        """
         self._path_to_raw_data = join(path, 'raw_data')
         create_dir_if_not_exists(self._path_to_raw_data)
 
     def save_book(self, book: Book) -> None:
+        """Saves a book object
+
+        Args:
+            book (Book): the book object to be saved
+        """
         book_path = join(self._path_to_raw_data, book.attributes.isbn)
         reviews_path = join(book_path, 'reviews')
         self._save_book_attributes(book.attributes, book_path)
         self._save_reviews(book.reviews, reviews_path)
 
     def get_saved_book_urls(self, num_reviews: int) -> list[str]:
-        """Get all book urls that are saved with the
-        required number of reviews"""
+        """Get all the saved book urls. It does not return books with
+        insufficient number of review
+
+        Args:
+            num_reviews (int): number of reviews required
+
+        Returns:
+            list[str]: list of saved book urls
+        """
         path = self._path_to_raw_data
         # get all saved book isbn numbers
         book_isbns = get_list_of_dirs(path)
@@ -39,7 +60,14 @@ class LocalRawDataStorage(RawDataStorage):
         return book_urls
 
     def get_saved_review_users(self, isbn: str) -> list[str]:
-        """Get all review users saved for a book"""
+        """Get all the user names of the saved reviews of a particular book.
+
+        Args:
+            isbn (str): the book isbn number
+
+        Returns:
+            list[str]: list of user names of reviews
+        """
         path = self._path_to_raw_data
         # get all saved book isbn numbers
         if not is_dir_present(isbn, path):
@@ -50,7 +78,13 @@ class LocalRawDataStorage(RawDataStorage):
         saved_reviews = [user.split('.')[0] for user in saved_reviews]
         return saved_reviews
 
-    def save_book_image(self, url: str, isbn: str):
+    def save_book_image(self, url: str, isbn: str) -> None:
+        """Saves an image from the given url to the specified book
+
+        Args:
+            url (str): image url
+            isbn (str): the book isbn
+        """
         if not is_dir_present(isbn, self._path_to_raw_data):
             raise Exception('Book data folder does not exist.')
         image_path = join(self._path_to_raw_data, isbn, f'{isbn}.jpg')
@@ -82,8 +116,3 @@ class LocalRawDataStorage(RawDataStorage):
         if create_dir_if_not_exists(path):
             with open(f"{path}/data.json", mode='w') as f:
                 json.dump(dataclasses.asdict(book_attributes), f)
-
-if __name__=='__main__':
-
-    path = getcwd()
-
