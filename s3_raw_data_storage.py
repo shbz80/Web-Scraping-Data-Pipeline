@@ -4,7 +4,6 @@ from dataclasses import asdict
 from os import getcwd
 import json
 import urllib.request
-from attr import attributes
 import boto3
 from entities import Book, BookAttribute, Review
 from raw_data_storage import RawDataStorage
@@ -42,7 +41,7 @@ class S3RawDataStorage(RawDataStorage):
         book_path = join(self._s3_root_folder, book.attributes.isbn)
         reviews_path = join(book_path, 'reviews')
         if book.attributes.isbn not in saved_isbns:
-        self._save_book_attributes(book.attributes, book_path)
+            self._save_book_attributes(book.attributes, book_path)
         self._save_reviews(book.reviews, reviews_path)
 
     def get_saved_book_urls(self, num_reviews: int) -> list[str]:

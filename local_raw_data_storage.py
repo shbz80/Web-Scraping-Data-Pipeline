@@ -32,7 +32,7 @@ class LocalRawDataStorage(RawDataStorage):
         book_path = join(self._path_to_raw_data, book.attributes.isbn)
         reviews_path = join(book_path, 'reviews')
         if book.attributes.isbn not in saved_isbns:
-        self._save_book_attributes(book.attributes, book_path)
+            self._save_book_attributes(book.attributes, book_path)
         self._save_reviews(book.reviews, reviews_path)
 
     def get_saved_book_urls(self, num_reviews: int) -> list[str]:
