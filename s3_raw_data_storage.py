@@ -31,14 +31,17 @@ class S3RawDataStorage(RawDataStorage):
         temp_path = join(getcwd(), 'temp')
         create_dir_if_not_exists(temp_path)
 
-    def save_book(self, book: Book) -> None:
+    def save_book(self, book: Book, saved_isbns: str) -> None:
         """Saves a book object in an S3 bucket
 
         Args:
             book (Book): the book object to be saved
+            saved_isbns (str): list if isbns for which the
+            attributes are already saved. Only reviews are new.
         """
         book_path = join(self._s3_root_folder, book.attributes.isbn)
         reviews_path = join(book_path, 'reviews')
+        if book.attributes.isbn not in saved_isbns:
         self._save_book_attributes(book.attributes, book_path)
         self._save_reviews(book.reviews, reviews_path)
 
@@ -61,6 +64,10 @@ class S3RawDataStorage(RawDataStorage):
                 saved_urls.append(url)
 
         return saved_urls
+
+    def get_saved_book_isbns(self):
+        """Gets all the saved book isbn numbers"""
+        return self._get_all_isbns()
 
     def get_saved_review_users(self, isbn: str) -> list[str]:
         """Get all the user names of the saved reviews of a particular book.

@@ -21,6 +21,7 @@ class BookAttribute:
 
 @dataclass
 class Review:
+    isbn: str
     text: str
     rating: Optional[int]
     user: str

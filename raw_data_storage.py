@@ -5,7 +5,7 @@ from entities import Book
 class RawDataStorage(ABC):
     """This class can be inherited by local and cloud raw data storage"""
     @abstractmethod
-    def save_book(self, book: Book):
+    def save_book(self, book: Book, saved_isbns: str):
         pass
     
     @abstractmethod
@@ -14,6 +14,10 @@ class RawDataStorage(ABC):
 
     @abstractmethod
     def get_saved_book_urls(self, num_reviews: int):
+        pass
+
+    @abstractmethod
+    def get_saved_book_isbns(self):
         pass
 
     @abstractmethod

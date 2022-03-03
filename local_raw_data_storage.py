@@ -21,14 +21,17 @@ class LocalRawDataStorage(RawDataStorage):
         self._path_to_raw_data = join(path, 'raw_data')
         create_dir_if_not_exists(self._path_to_raw_data)
 
-    def save_book(self, book: Book) -> None:
+    def save_book(self, book: Book, saved_isbns: str) -> None:
         """Saves a book object
 
         Args:
             book (Book): the book object to be saved
+            saved_isbns (str): list if isbns for which the
+            attributes are already saved. Only reviews are new.
         """
         book_path = join(self._path_to_raw_data, book.attributes.isbn)
         reviews_path = join(book_path, 'reviews')
+        if book.attributes.isbn not in saved_isbns:
         self._save_book_attributes(book.attributes, book_path)
         self._save_reviews(book.reviews, reviews_path)
 
@@ -57,6 +60,11 @@ class LocalRawDataStorage(RawDataStorage):
                 book_url = attr_dict['book_url']
                 book_urls.append(book_url)
         return book_urls
+
+    def get_saved_book_isbns(self):
+        """Gets all saved book isbn numbers"""
+        path = self._path_to_raw_data
+        return get_list_of_dirs(path)
 
     def get_saved_review_users(self, isbn: str) -> list[str]:
         """Get all the user names of the saved reviews of a particular book.

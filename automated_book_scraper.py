@@ -98,7 +98,7 @@ class AutomatedBookScraper(ABC):
             book_reviews = self._automated_book_review_scraper.scrape_book_reviews(
                     num=num_reviews, driver=self._driver, skip_users=saved_reviews)
             scraped_book = Book(attributes=book_attribute, reviews=book_reviews)
-            self._raw_data_storage.save_book(scraped_book)
+            saved_isbns = self._get_saved_isbns()
             image_url = scraped_book.attributes.image_url
             book_isbn = scraped_book.attributes.isbn
             self._raw_data_storage.save_book_image(image_url, book_isbn)

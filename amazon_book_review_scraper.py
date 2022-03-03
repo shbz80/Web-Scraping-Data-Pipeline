@@ -8,12 +8,13 @@ from utils import PAGE_SLEEP_TIME
 class AmazonBookReviewScraper(BookReviewScraper):
     """Amazon specific review sraper for a single page"""
     def scrape_reviews_from_curr_page(
-            self, driver: webdriver = None, url: str = None,
+            self, isbn: str, driver: webdriver = None, url: str = None,
             skip_users: list[str] = None) -> list[Review]:
         """ Scrapes reviews from the current page.
         Expects either the webdriver or the url.
 
         Args:
+            isbn (str): book isbn number
             driver (webdriver, optional): webdriver point to the review page
             url (str, optional): url of the review page
             skip_users (list[str], optional): list of users to skip
@@ -42,7 +43,7 @@ class AmazonBookReviewScraper(BookReviewScraper):
             if text is None:
                 continue
             rating = self._get_review_rating_from_element(element)
-            review = Review(text, rating, user)
+            review = Review(isbn, text, rating, user)
             reviews.append(review)
         return reviews
     

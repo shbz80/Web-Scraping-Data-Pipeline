@@ -11,7 +11,7 @@ class BookReviewScraper(ABC):
 
     @abstractmethod
     def scrape_reviews_from_curr_page(
-            self, driver: webdriver = None, url: str = None,
+            self, isbn, driver: webdriver = None, url: str = None,
             skip_users: list[str] = None) -> list[Review]:
         pass
 
@@ -21,12 +21,13 @@ class AutomatedBookReviewScraper(BookReviewScraper):
     of reviews from a book.
     """
     def scrape_book_reviews(
-            self, num: int = 10, driver: webdriver = None,
+            self, isbn: str, num: int = 10, driver: webdriver = None,
             url: str = None, skip_users: list[str] = None) -> list[Review]:
         """Scrapes up to num reviews from users not in the list skip_users.
 
         Args:
             num (int, optional): number of reviews to scrape.
+            isbn (str): book isbn number
             driver (webdriver, optional): webdriver ponting to the book page
             url (str, optional): the book url
             skip_users (list[str], optional): list of user reviews to skip
@@ -54,7 +55,7 @@ class AutomatedBookReviewScraper(BookReviewScraper):
         while len(reviews) < num_reviews:
             reviews.extend(
                 self.scrape_reviews_from_curr_page(
-                    driver=driver, skip_users=skip_users))
+                    isbn, driver=driver, skip_users=skip_users))
             # got to next review page, break if no next page
             if not self._go_to_next_review_page_if_available(driver):
                 break
