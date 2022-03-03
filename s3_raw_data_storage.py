@@ -85,7 +85,7 @@ class S3RawDataStorage(RawDataStorage):
             # if it is a review
             if review_path in file_key:
                 user_json = file_key.split('/')[-1]
-                user = user_json.split('.')[0]
+                user = user_json.split('json')[0][:-1]
                 saved_users.append(user)
         return saved_users
 

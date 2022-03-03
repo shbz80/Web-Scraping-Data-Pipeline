@@ -82,7 +82,7 @@ class LocalRawDataStorage(RawDataStorage):
 
         review_path = join(path, isbn, 'reviews')
         saved_reviews = get_list_of_files(review_path)
-        saved_reviews = [user.split('.')[0] for user in saved_reviews]
+        saved_reviews = [user.split('json')[0][:-1] for user in saved_reviews]
         return saved_reviews
 
     def save_book_image(self, url: str, isbn: str) -> None:
