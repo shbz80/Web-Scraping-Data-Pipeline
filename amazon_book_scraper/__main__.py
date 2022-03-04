@@ -1,3 +1,4 @@
+import sys
 from os import getcwd
 from local_raw_data_storage import LocalRawDataStorage
 from s3_raw_data_storage import S3RawDataStorage
@@ -37,4 +38,6 @@ aabs = AmazonAutomatedBookScraper(
     rds_data_storage=rds_storage,
     browser='firefox')
 # run the scraper
-aabs.scrape_books(num_books=7, num_reviews=7)
+num_books = sys.argv[1]
+num_reviews = sys.argv[2]
+aabs.scrape_books(num_books=num_books, num_reviews=num_reviews)
