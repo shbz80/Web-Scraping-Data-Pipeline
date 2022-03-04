@@ -8,9 +8,18 @@ from amazon_automated_book_review_scraper import AmazonAutomatedBookReviewScrape
 from amazon_automated_book_scraper import AmazonAutomatedBookScraper
 
 url = "https://www.amazon.com/s?i=stripbooks&rh=n%3A25&fs=true&qid=1645782603&ref=sr_pg_1"
+# specify a list of banned title pharses that are likely to be of
+# a special format
+banned_titles = [
+    'Dungeons and Dragons',
+    'Dungeons & Dragons',
+    "Player's Handbook",
+    "Users's Manual",
+]
 # object that scrapes attributes of single book
-abas = AmazonBookAttributeScraper()
-# object that scrapes a reviews of a single book
+abas = AmazonBookAttributeScraper(banned_titles=banned_titles)
+
+# object that scrapes reviews of a single book
 aabrs = AmazonAutomatedBookReviewScraper()
 
 # choose and initialize raw storage object: local or S3 bucket

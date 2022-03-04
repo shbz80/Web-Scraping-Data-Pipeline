@@ -21,8 +21,7 @@ class AutomatedBookScraper(ABC):
             automated_book_review_scraper: AutomatedBookReviewScraper,
             raw_data_storage: RawDataStorage,
             rds_data_storage: RDSDataStorage = None,
-            browser: str = 'chrome',
-            banned_titles: list[str] = None) -> None:
+            browser: str = 'chrome') -> None:
         """
         Args:
             url (str): starting url for the book sraper
@@ -32,8 +31,6 @@ class AutomatedBookScraper(ABC):
             raw_data_storage (RawDataStorage): object for saving raw data
             rds_data_storage (RDSDataStorage, optional): RDS interface object
             browser (str, optional): select the browser.
-            banned_titles (list[str], optional): specify any banned phrases in
-                    the title.
         """
         if not isinstance(book_attribute_scraper, BookAttributeScraper):
             raise TypeError('Invalid type')
@@ -48,9 +45,6 @@ class AutomatedBookScraper(ABC):
         self._automated_book_review_scraper = automated_book_review_scraper
         self._raw_data_storage = raw_data_storage
         self._rds_data_storage = rds_data_storage
-
-        if banned_titles is None:
-            self._banned_titles = []
 
         # init Selenium 
         try:
