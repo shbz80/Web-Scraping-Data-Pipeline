@@ -38,11 +38,9 @@ class BookAttributeScraper(ABC):
         driver.get(url)
         time.sleep(PAGE_SLEEP_TIME)
 
-        self._initialize(driver)
-
-        isbn = self._extract_isbn_attribute(driver)
-        if isbn is None: 
+        if not self._initialize(driver):
             return None
+
         title = self._extract_title_attribute(driver)
         if title is None:
             return None
@@ -50,10 +48,17 @@ class BookAttributeScraper(ABC):
         # drop the book
         for banned_title in self._banned_titles:
             if banned_title in title:
+                print(f'{title} is banned!')
                 return None
+
+        isbn = self._extract_isbn_attribute(driver)
+        if isbn is None: 
+            return None
+
         language = self._extract_language_attribute(driver)
         if not language or language != 'English':
             return None
+            
         uuid_str = str(uuid.uuid4())
         author = self._extract_author_attribute(driver)
         description = self._extract_description_attribute(driver)
@@ -83,7 +88,7 @@ class BookAttributeScraper(ABC):
         return book_attributes
     
     @abstractmethod
-    def _initialize(self, driver):
+    def _initialize(self, driver) -> bool:
         pass
 
     @abstractmethod

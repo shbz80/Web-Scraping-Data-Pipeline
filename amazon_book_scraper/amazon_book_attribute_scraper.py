@@ -180,18 +180,29 @@ class AmazonBookAttributeScraper(BookAttributeScraper):
         """Gets some book attribute elements from the current webpage:
         isbn, date, language, pages, 
         """
+        try:
         xpath = '//div[@id="detailBullets_feature_div"]/ul/li'
         self.book_elements = driver.find_elements_by_xpath(xpath)
+            return True
+        except:
+            return False
 
     def _get_product_elements(self, driver):
         """Gets some product feature elements from the current webpage:
         best_seller_rank, review_rating, review_count, 
         """
+        try:
         xpath = '//div[@id="detailBulletsWrapper_feature_div"]/ul'
         self.product_elements = driver.find_elements_by_xpath(xpath)
+            return True
+        except:
+            return False
 
     def _initialize(self, driver):
-        self._get_book_elements(driver)
-        self._get_product_elements(driver)
+        if (bool(self._get_book_elements(driver)) and
+            bool(self._get_product_elements(driver))):
+            return True
+        else:
+            return False
 
     
