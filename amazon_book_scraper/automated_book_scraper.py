@@ -140,11 +140,12 @@ class AutomatedBookScraper(ABC):
         url_list = self._get_book_urls_from_page()
         url_list = self._remove_saved_urls(url_list, saved_ulrs)
         # navigate pages sequentially and get book urls
-        while len(url_list) < num_books:
+        while len(url_list) < num_books and self._go_to_next_page_if_exists():
             urls_curr_page = self._get_book_urls_from_page()
             urls_curr_page = self._remove_saved_urls(
                 urls_curr_page, saved_ulrs)
             url_list.extend(urls_curr_page)
+            
         # return only a maximum of num_books urls
         if len(url_list) > num_books:
             return url_list[:num_books]
