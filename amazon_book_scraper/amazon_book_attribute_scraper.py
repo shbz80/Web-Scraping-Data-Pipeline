@@ -181,8 +181,8 @@ class AmazonBookAttributeScraper(BookAttributeScraper):
         isbn, date, language, pages, 
         """
         try:
-        xpath = '//div[@id="detailBullets_feature_div"]/ul/li'
-        self.book_elements = driver.find_elements_by_xpath(xpath)
+            xpath = '//div[@id="detailBullets_feature_div"]/ul/li'
+            self.book_elements = driver.find_elements_by_xpath(xpath)
             return True
         except:
             return False
@@ -192,8 +192,8 @@ class AmazonBookAttributeScraper(BookAttributeScraper):
         best_seller_rank, review_rating, review_count, 
         """
         try:
-        xpath = '//div[@id="detailBulletsWrapper_feature_div"]/ul'
-        self.product_elements = driver.find_elements_by_xpath(xpath)
+            xpath = '//div[@id="detailBulletsWrapper_feature_div"]/ul'
+            self.product_elements = driver.find_elements_by_xpath(xpath)
             return True
         except:
             return False

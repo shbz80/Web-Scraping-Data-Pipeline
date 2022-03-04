@@ -85,9 +85,9 @@ class AutomatedBookScraper(ABC):
         # get the number of books to scrape
         if num_books > len(saved_ulrs):
             num_books_to_scrape = num_books - len(saved_ulrs)
-            # scrape 1% extra to compesate for errors
+            # scrape 5% extra to compesate for errors
             num_books_to_scrape = num_books_to_scrape + \
-                    int(num_books_to_scrape * 0.01)
+                    int(num_books_to_scrape * 0.05)
         else:
             num_books_to_scrape = 0
 

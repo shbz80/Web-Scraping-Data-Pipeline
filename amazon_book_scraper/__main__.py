@@ -46,7 +46,10 @@ aabs = AmazonAutomatedBookScraper(
     raw_data_storage=raw_storage,
     rds_data_storage=rds_storage,
     browser='firefox')
+    
 # run the scraper
-num_books = sys.argv[1]
-num_reviews = sys.argv[2]
+num_books = int(sys.argv[1])
+num_reviews = int(sys.argv[2])
+# num_books = 50
+# num_reviews = 5
 aabs.scrape_books(num_books=num_books, num_reviews=num_reviews)
