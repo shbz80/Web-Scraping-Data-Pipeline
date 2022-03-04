@@ -1,7 +1,7 @@
 import unittest
 import os
 from local_raw_data_storage import LocalRawDataStorage
-from entities import Book, BookAttribute, Review
+from book_scraper.entities import Book, BookAttribute, Review
 import utils
 
 

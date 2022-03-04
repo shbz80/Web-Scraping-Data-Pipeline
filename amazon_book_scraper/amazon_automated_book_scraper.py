@@ -87,31 +87,3 @@ class AmazonAutomatedBookScraper(AutomatedBookScraper):
         except:
             print('Failed to click on the sort option')
 
-if __name__=='__main__':
-    from os import getcwd
-    from local_raw_data_storage import LocalRawDataStorage
-    from s3_raw_data_storage import S3RawDataStorage
-    from aws_postgres_data_storage import AWSPostgresRDSDataStorage
-
-    url = "https://www.amazon.com/s?i=stripbooks&rh=n%3A25&fs=true&qid=1645782603&ref=sr_pg_1"
-    abas = AmazonBookAttributeScraper()
-    aabrs = AmazonAutomatedBookReviewScraper()
-    # storage = LocalRawDataStorage(path=getcwd())
-    raw_storage = S3RawDataStorage(path=None, bucket='aicore-web-scraping')
-    rds_param = {'DATABASE_TYPE': 'postgresql',
-                'DBAPI': 'psycopg2',
-                'ENDPOINT': "aicore-webscraping-db.cwckuebjlobx.us-east-1.rds.amazonaws.com",
-                'USER': 'postgres',
-                'PASSWORD': 'aicore2022',
-                'PORT': 5432,
-                'DATABASE': 'postgres'}
-    rds_storage = AWSPostgresRDSDataStorage(rds_param)
-    # rds_storage = None
-    aabs = AmazonAutomatedBookScraper(
-                                    url=url,
-                                    book_attribute_scraper=abas,
-                                    automated_book_review_scraper=aabrs,
-                                    raw_data_storage=raw_storage,
-                                    rds_data_storage=rds_storage,
-                                    browser='firefox')
-    aabs.scrape_books(num_books=5, num_reviews=5)
