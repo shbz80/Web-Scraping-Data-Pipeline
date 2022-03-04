@@ -1,2 +1,2 @@
-# Web-Scraping-Data-Pipeline
-In this lab, you'll implement an industry grade data collection pipeline that runs scalably in the cloud.
+# Web-Scraping-Data-Pipeline (Amazon Books Scraping)
+This web scraper can scrape book details from a specified book category in Amazon books section. The scraped books are either stored locally or in an Amazon S3 bucket. It can also be optionally stored in an AWS Postres relational database system (RDS). The application can be run multiple times and it will resume as a continuation of what was already scraped. Executing the application after the required number of books have been scraped will simply exit. Running the application with an increased number of book reviews will satisfy the requirements even for those books that are already scraped.
