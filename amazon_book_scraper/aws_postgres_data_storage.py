@@ -1,13 +1,11 @@
 """Provides the implementation of the AWS Postgres RDS data storage class"""
 from os.path import join
 from dataclasses import asdict
-from os import getcwd
 import json
 import pandas as pd
 from sqlalchemy import create_engine, inspect, text
 from entities import Book, BookAttribute, Review
 from rds_data_storage import RDSDataStorage
-from utils import create_dir_if_not_exists
 
 
 class AWSPostgresRDSDataStorage(RDSDataStorage):
@@ -60,17 +58,20 @@ class AWSPostgresRDSDataStorage(RDSDataStorage):
         if not insp.has_table(self._rds_review_table):
             return []
         # if it exists get the urls with review >= num_review
+        # TODO: a proper sql query
         review_table = pd.read_sql_table(
             self._rds_review_table, self._rds_engine)
         isbn_count = review_table['isbn'] .value_counts()
         isbns = isbn_count.index[isbn_count >= num_reviews]
 
+        # TODO: a proper sql query
         attribute_table = pd.read_sql_table(
             self._rds_attribute_table, self._rds_engine).set_index('isbn')
         saved_urls = attribute_table['book_url'][isbns].tolist()
         return saved_urls
 
     def get_saved_book_isbns(self):
+        """Gets all the saved book isbn numbers"""
          # check is the attributes table exists
         insp = inspect(self._rds_engine)
         if not insp.has_table(self._rds_attribute_table):
@@ -104,6 +105,7 @@ class AWSPostgresRDSDataStorage(RDSDataStorage):
 
     def _save_reviews(self, reviews):
         # save the reviews in RDS
+        # TODO: works without asdict! 
         book_reviews_df = pd.DataFrame(reviews)
         try:
             book_reviews_df.to_sql(

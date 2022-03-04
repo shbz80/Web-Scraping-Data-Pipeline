@@ -9,7 +9,9 @@ from rds_data_storage import RDSDataStorage
 from utils import PAGE_SLEEP_TIME
 
 class AmazonAutomatedBookScraper(AutomatedBookScraper):
-    """The Amazon specific class for automating the book scraping process."""
+    """The Amazon specific class for automating the book scraping process.
+    This can navigate through pages and scrape multiple books.
+    """
     def __init__(self, url: str, 
             book_attribute_scraper: AmazonBookAttributeScraper, 
             automated_book_review_scraper: AmazonAutomatedBookReviewScraper, 

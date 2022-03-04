@@ -52,7 +52,7 @@ class BookAttributeScraper(ABC):
             if banned_title in title:
                 return None
         language = self._extract_language_attribute(driver)
-        if language is None:
+        if not language or language != 'English':
             return None
         uuid_str = str(uuid.uuid4())
         author = self._extract_author_attribute(driver)

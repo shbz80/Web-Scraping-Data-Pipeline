@@ -23,8 +23,7 @@ class AutomatedBookScraper(ABC):
             rds_data_storage: RDSDataStorage = None,
             browser: str = 'chrome',
             banned_titles: list[str] = None) -> None:
-        """_summary_
-
+        """
         Args:
             url (str): starting url for the book sraper
             book_attribute_scraper (BookAttributeScraper): scraper for a book
@@ -85,8 +84,11 @@ class AutomatedBookScraper(ABC):
             list[Book]: _description_
         """
         scraped_books = []
+        # get all the scraped book urls that satisfies the current
+        # requirements on num_review
         saved_ulrs = self._get_saved_urls(num_reviews=num_reviews)
 
+        # get the number of books to scrape
         if num_books > len(saved_ulrs):
             num_books_to_scrape = num_books - len(saved_ulrs)
             # scrape 1% extra to compesate for errors
@@ -95,27 +97,42 @@ class AutomatedBookScraper(ABC):
         else:
             num_books_to_scrape = 0
 
+        # get all saved book isbn numbers even if it does not match the
+        # current num_review requirement
+        saved_isbns = self._get_saved_isbns()
+
+        # get all the urls that needs to be scraped that includes the one that
+        # have already been scraped but do not satisfy the current num_review
+        # requirement.
         urls_to_scrape = self._get_urls_to_scrape(
                 num_books_to_scrape, saved_ulrs)
 
+        # scrape all new book/reviews
         for i, book_url in enumerate(urls_to_scrape):
+            # get the book attribute for the url
             # driver need not point to the page
             # side-effect: webdriver points to the book page
             book_attribute = \
                 self._book_attribute_scraper.scrape_book_attributes_from_page(
                         url=book_url, driver=self._driver)
+            # skip this book if it is invalid
             if book_attribute is None:
                 continue
+            # get any saved reviews for this book
             saved_reviews = self._get_saved_reviews(book_attribute.isbn)
+            # get the book review for this book
             # driver needs to point to the page
             book_reviews = self._automated_book_review_scraper.scrape_book_reviews(
                     book_attribute.isbn, num=num_reviews, driver=self._driver,
                     skip_users=saved_reviews)
+            # prepare the book object
             scraped_book = Book(attributes=book_attribute, reviews=book_reviews)
-            saved_isbns = self._get_saved_isbns()
+            # save the book in the chosen raw data storage (local or S3 bucket)
             self._raw_data_storage.save_book(scraped_book, saved_isbns)
+            # save the book in the RDS system if required
             if self._rds_data_storage:
                 self._rds_data_storage.save_book(scraped_book, saved_isbns)
+            # save the image in the raw data storage
             image_url = scraped_book.attributes.image_url
             book_isbn = scraped_book.attributes.isbn
             self._raw_data_storage.save_book_image(image_url, book_isbn)
@@ -128,14 +145,12 @@ class AutomatedBookScraper(ABC):
         # get book urls form the first page
         url_list = self._get_book_urls_from_page()
         url_list = self._remove_saved_urls(url_list, saved_ulrs)
-
         # navigate pages sequentially and get book urls
         while len(url_list) < num_books:
             urls_curr_page = self._get_book_urls_from_page()
             urls_curr_page = self._remove_saved_urls(
                 urls_curr_page, saved_ulrs)
             url_list.extend(urls_curr_page)
-
         # return only a maximum of num_books urls
         if len(url_list) > num_books:
             return url_list[:num_books]
@@ -164,6 +179,7 @@ class AutomatedBookScraper(ABC):
         return users
 
     def _get_saved_isbns(self):
+        """Retrieves the list of saved book isbn number"""
         if self._rds_data_storage:
             isbns = self._rds_data_storage.get_saved_book_isbns()
         else:

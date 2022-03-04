@@ -1,5 +1,4 @@
 """Provides Amazon specific class for automated review scraping"""
-
 import time
 from selenium import webdriver
 from entities import Review

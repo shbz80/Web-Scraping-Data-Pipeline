@@ -8,7 +8,6 @@ from utils import PAGE_SLEEP_TIME
 
 class BookReviewScraper(ABC):
     """Abstract class for scraping reviews on a single page."""
-
     @abstractmethod
     def scrape_reviews_from_curr_page(
             self, isbn, driver: webdriver = None, url: str = None,
@@ -45,7 +44,8 @@ class AutomatedBookReviewScraper(BookReviewScraper):
 
         self._get_to_first_review_page(driver)
         reviews = []
-        
+        # get the number of reiews to scrape based on what is
+        # already available
         if len(skip_users) >= num:
             num_reviews = 0
         else:
