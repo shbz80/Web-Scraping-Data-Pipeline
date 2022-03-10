@@ -49,9 +49,9 @@ class AutomatedBookScraper(ABC):
         # init Selenium 
         try:
             if browser == 'chrome':
-                self._driver = webdriver.Chrome()
+                self._driver.implicitly_wait(10)
             elif browser == 'firefox':
-                self._driver = webdriver.Firefox()
+                self._driver.implicitly_wait(10)
             else:
                 raise NotImplementedError(
                     'Only Chrome and Firefox are supported.')
