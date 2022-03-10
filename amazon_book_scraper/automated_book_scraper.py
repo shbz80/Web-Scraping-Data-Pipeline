@@ -2,6 +2,8 @@
 from abc import ABC, abstractmethod
 import time
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from entities import Book
 from book_attribute_scraper import BookAttributeScraper
 from book_review_scraper import AutomatedBookReviewScraper
@@ -21,7 +23,8 @@ class AutomatedBookScraper(ABC):
             automated_book_review_scraper: AutomatedBookReviewScraper,
             raw_data_storage: RawDataStorage,
             rds_data_storage: RDSDataStorage = None,
-            browser: str = 'chrome') -> None:
+            browser: str = 'chrome',
+            mode: str = 'normal') -> None:
         """
         Args:
             url (str): starting url for the book sraper
@@ -31,6 +34,7 @@ class AutomatedBookScraper(ABC):
             raw_data_storage (RawDataStorage): object for saving raw data
             rds_data_storage (RDSDataStorage, optional): RDS interface object
             browser (str, optional): select the browser.
+            mode (str, optional): normal or headless mode
         """
         if not isinstance(book_attribute_scraper, BookAttributeScraper):
             raise TypeError('Invalid type')
@@ -49,14 +53,26 @@ class AutomatedBookScraper(ABC):
         # init Selenium 
         try:
             if browser == 'chrome':
+                chrome_options = ChromeOptions()
+                if mode == 'headless':
+                    chrome_options.add_argument("--headless")
+                chrome_options.add_argument('--no-sandbox')
+                chrome_options.add_argument('--disable-dev-shm-usage')
+                self._driver = webdriver.Chrome(options=chrome_options)
                 self._driver.implicitly_wait(10)
             elif browser == 'firefox':
+                firfox_options = FirefoxOptions()
+                if mode == 'headless':
+                    firfox_options.add_argument("--headless")
+                firfox_options.add_argument('--no-sandbox')
+                firfox_options.add_argument('--disable-dev-shm-usage')
+                self._driver = webdriver.Firefox(options=firfox_options)
                 self._driver.implicitly_wait(10)
             else:
                 raise NotImplementedError(
                     'Only Chrome and Firefox are supported.')
-        except:
-            print('Selenium driver error')
+        except Exception as e:
+            print('Selenium driver error: ', e)
 
         # get to the url
         try:
