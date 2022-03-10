@@ -35,8 +35,8 @@ rds_param = {'DATABASE_TYPE': 'postgresql',
              'PORT': 5432,
              'DATABASE': 'postgres'}
 # rds storage is optional
-rds_storage = AWSPostgresRDSDataStorage(rds_param)
-# rds_storage = None
+# rds_storage = AWSPostgresRDSDataStorage(rds_param)
+rds_storage = None
 
 # initialize the scraper object
 aabs = AmazonAutomatedBookScraper(
