@@ -35,8 +35,8 @@ rds_param = {'DATABASE_TYPE': 'postgresql',
              'PORT': 5432,
              'DATABASE': 'postgres'}
 # rds storage is optional
-# rds_storage = AWSPostgresRDSDataStorage(rds_param)
-rds_storage = None
+rds_storage = AWSPostgresRDSDataStorage(rds_param)
+# rds_storage = None
 
 # initialize the scraper object
 aabs = AmazonAutomatedBookScraper(
@@ -53,6 +53,6 @@ aabs = AmazonAutomatedBookScraper(
 # run the scraper
 num_books = int(sys.argv[1])
 num_reviews = int(sys.argv[2])
-# num_books = 50
+# num_books = 3
 # num_reviews = 5
 aabs.scrape_books(num_books=num_books, num_reviews=num_reviews)
