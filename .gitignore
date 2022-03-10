@@ -1,5 +1,6 @@
 raw_data/
 tests/raw_data/
 temp/
+.aws
 *.log
 *.pyc
