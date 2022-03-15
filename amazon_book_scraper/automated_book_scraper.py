@@ -59,7 +59,7 @@ class AutomatedBookScraper(ABC):
                 chrome_options.add_argument('--no-sandbox')
                 chrome_options.add_argument('--disable-dev-shm-usage')
                 self._driver = webdriver.Chrome(options=chrome_options)
-                self._driver.implicitly_wait(10)
+                # self._driver.implicitly_wait(10)
             elif browser == 'firefox':
                 firfox_options = FirefoxOptions()
                 if mode == 'headless':
@@ -67,7 +67,7 @@ class AutomatedBookScraper(ABC):
                 firfox_options.add_argument('--no-sandbox')
                 firfox_options.add_argument('--disable-dev-shm-usage')
                 self._driver = webdriver.Firefox(options=firfox_options)
-                self._driver.implicitly_wait(10)
+                # self._driver.implicitly_wait(10)
             else:
                 raise NotImplementedError(
                     'Only Chrome and Firefox are supported.')

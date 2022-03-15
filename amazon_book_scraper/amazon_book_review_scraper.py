@@ -1,9 +1,12 @@
 """Provides the Amazon specific review sraper for a single page."""
 import time
 from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from entities import Review
 from book_review_scraper import BookReviewScraper
-from utils import PAGE_SLEEP_TIME
+from utils import PAGE_SLEEP_TIME, TIME_OUT
 
 class AmazonBookReviewScraper(BookReviewScraper):
     """Amazon specific review sraper for a single page"""
@@ -31,7 +34,9 @@ class AmazonBookReviewScraper(BookReviewScraper):
             time.sleep(PAGE_SLEEP_TIME)
         # get a list of review elements in the current page
         xpath = '//div[@id="cm_cr-review_list"]/div[@data-hook="review"]'
-        elements = driver.find_elements_by_xpath(xpath)
+        # elements = driver.find_elements_by_xpath(xpath)
+        elements = WebDriverWait(driver, TIME_OUT).until(
+            EC.presence_of_all_elements_located((By.XPATH, xpath)))
         reviews = []
         for element in elements:
             user = self._get_review_user_from_element(element)

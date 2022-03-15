@@ -1,5 +1,9 @@
 """Provides the Amazon specific class for scraping book attributes."""
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from book_attribute_scraper import BookAttributeScraper
+from utils import TIME_OUT
 
 class AmazonBookAttributeScraper(BookAttributeScraper):
     """The Amazon specific book attribute scraper."""
@@ -19,7 +23,9 @@ class AmazonBookAttributeScraper(BookAttributeScraper):
 
     def _extract_title_attribute(self, driver):
         xpath = '//span[@id="productTitle"]'
-        element = driver.find_element_by_xpath(xpath)
+        # element = driver.find_element_by_xpath(xpath)
+        element = WebDriverWait(driver, TIME_OUT).until(
+            EC.presence_of_element_located((By.XPATH, xpath)))
         return element.text
 
     def _extract_language_attribute(self, driver):
