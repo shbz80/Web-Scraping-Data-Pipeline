@@ -1,5 +1,5 @@
 # install the base image with Python
-FROM python:3.9-buster
+FROM python:3.9-slim-buster
 # install wget and its dependencies
 RUN apt-get update && apt-get install -y gnupg2
 RUN apt-get update && apt-get install -y wget

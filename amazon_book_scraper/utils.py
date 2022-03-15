@@ -5,7 +5,7 @@ from os import listdir, walk
 from os.path import isfile, join
 # some constants
 PAGE_SLEEP_TIME = 0.5
-TIME_OUT = 15
+TIME_OUT = 30
 
 # some functions
 def create_dir_if_not_exists(dir: str) -> bool:

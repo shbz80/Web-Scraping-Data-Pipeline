@@ -9,7 +9,7 @@ from book_attribute_scraper import BookAttributeScraper
 from book_review_scraper import AutomatedBookReviewScraper
 from raw_data_storage import RawDataStorage
 from rds_data_storage import RDSDataStorage
-from utils import PAGE_SLEEP_TIME
+from utils import PAGE_SLEEP_TIME, TIME_OUT
 
 class AutomatedBookScraper(ABC):
     """Automates the book scraping process. Ensures that the total number
