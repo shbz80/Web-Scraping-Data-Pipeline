@@ -20,14 +20,16 @@ class AmazonAutomatedBookScraper(AutomatedBookScraper):
             raw_data_storage: RawDataStorage,
             rds_data_storage: RDSDataStorage = None,
             browser: str = 'chrome',
-            mode: str = 'normal') -> None:
+            mode: str = 'normal',
+            export_metric = False) -> None:
         super().__init__(url, 
                 book_attribute_scraper,
                 automated_book_review_scraper,
                 raw_data_storage,
                 rds_data_storage,
                 browser=browser,
-                mode=mode)
+                mode=mode,
+                export_metric=export_metric)
         self._sort_by_reviews()
 
     def _get_book_urls_from_page(self):

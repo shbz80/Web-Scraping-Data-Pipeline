@@ -4,6 +4,7 @@ import time
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
+from prometheus_client import Gauge
 from entities import Book
 from book_attribute_scraper import BookAttributeScraper
 from book_review_scraper import AutomatedBookReviewScraper
@@ -24,7 +25,8 @@ class AutomatedBookScraper(ABC):
             raw_data_storage: RawDataStorage,
             rds_data_storage: RDSDataStorage = None,
             browser: str = 'chrome',
-            mode: str = 'normal') -> None:
+            mode: str = 'normal',
+            export_metric = False) -> None:
         """
         Args:
             url (str): starting url for the book sraper
@@ -35,6 +37,7 @@ class AutomatedBookScraper(ABC):
             rds_data_storage (RDSDataStorage, optional): RDS interface object
             browser (str, optional): select the browser.
             mode (str, optional): normal or headless mode
+            export_metric (bool): enables exporting prometheus metrics
         """
         if not isinstance(book_attribute_scraper, BookAttributeScraper):
             raise TypeError('Invalid type')
@@ -49,6 +52,11 @@ class AutomatedBookScraper(ABC):
         self._automated_book_review_scraper = automated_book_review_scraper
         self._raw_data_storage = raw_data_storage
         self._rds_data_storage = rds_data_storage
+
+        # inits counter metric for prometheus
+        if export_metric:
+            self.g = Gauge('books_to_scrape',
+                'The number of books to scrape in the current session.')
 
         # init Selenium 
         try:
@@ -107,6 +115,10 @@ class AutomatedBookScraper(ABC):
         else:
             num_books_to_scrape = 0
 
+        # set the prometheus guage
+        if self.g:
+            self.g.set(num_books_to_scrape)
+
         # get all saved book isbn numbers even if it does not match the
         # current num_review requirement
         saved_isbns = self._get_saved_isbns()
@@ -127,6 +139,8 @@ class AutomatedBookScraper(ABC):
                         url=book_url, driver=self._driver)
             # skip this book if it is invalid
             if book_attribute is None:
+                # decrement the guage
+                self.g.dec()
                 continue
             # get any saved reviews for this book
             saved_reviews = self._get_saved_reviews(book_attribute.isbn)
@@ -147,6 +161,8 @@ class AutomatedBookScraper(ABC):
             book_isbn = scraped_book.attributes.isbn
             self._raw_data_storage.save_book_image(image_url, book_isbn)
             scraped_books.append(scraped_book)
+            # decrement the guage
+            self.g.dec()
             print(f"{len(urls_to_scrape)- i - 1} remaining books")
 
         return scraped_books

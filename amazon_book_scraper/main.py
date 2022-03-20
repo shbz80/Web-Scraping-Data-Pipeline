@@ -1,5 +1,6 @@
 import sys
 from os import getcwd
+from prometheus_client import start_http_server
 from local_raw_data_storage import LocalRawDataStorage
 from s3_raw_data_storage import S3RawDataStorage
 from aws_postgres_data_storage import AWSPostgresRDSDataStorage
@@ -38,6 +39,10 @@ rds_param = {'DATABASE_TYPE': 'postgresql',
 rds_storage = AWSPostgresRDSDataStorage(rds_param)
 # rds_storage = None
 
+# start the prometheus metric exporter
+# arg: port number
+start_http_server(9200)
+
 # initialize the scraper object
 aabs = AmazonAutomatedBookScraper(
     url=url,
@@ -48,7 +53,9 @@ aabs = AmazonAutomatedBookScraper(
     browser='chrome',
     # browser='firefox',
     # mode='normal')
-    mode='headless')
+    mode='headless',
+    export_metric=True)
+
     
 # run the scraper
 num_books = int(sys.argv[1])
