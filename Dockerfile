@@ -19,6 +19,8 @@ COPY . .
 # this is necessary for accessing the AWS S3 bucket
 ENV AWS_CONFIG_FILE=/.aws/config
 ENV AWS_SHARED_CREDENTIALS_FILE=/.aws/credentials
+# expose prometheus client export port
+EXPOSE 9200
 # install all python package requirements
 RUN pip install -r requirements.txt
 # install the AWS CLI (not sure this is required)
