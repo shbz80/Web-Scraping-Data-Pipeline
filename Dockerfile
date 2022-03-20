@@ -26,7 +26,7 @@ RUN pip install awscli
 # this is required to export application metrics
 RUN pip install prometheus-client
 # runs the scraper program. amazon_book_scraper is a package
-ENTRYPOINT ["python", "amazon_book_scraper"]
+ENTRYPOINT ["python", "amazon_book_scraper/main.py"]
 # the scraper program has two arguments: num_book and num_reviews
 # both gets a default value of 5 and can be overdriven.
 CMD ["5", "5"]
