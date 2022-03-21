@@ -51,5 +51,4 @@ The source code is designed such that it can be used for other book sites also.
 - Complete implementation: the developer inherits from the abstract service provider independent classes to implement service provider dependent classes. The included example is the amazon specific classes in amazon_automated_book_review_scraper.py, amazon_automated_book_scraper.py, amazon_book_attribute_scraper.py and amazon_book_review_scraper.py. These classes contain only amazon specific implementations.
 
 ## Future additions:
-- Select sorting criterion of the list of books
-- CI with automated testing. Only CD is implemented now.
+- Add selection of sorting criterion of books
