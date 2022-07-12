@@ -4,6 +4,8 @@ This web scraper scrapes book details from a specified Amazon book category. The
 - Book attributes: tile, author, description, price, page number, bestseller rank, review rank, average review rating and cover page image
 - Book review: review text, rating, and user name
 
+Although the application was developed with Amazon.com in mind, the object oriented design of the software allows one to easily adapt to any other book sites. 
+
 ## About the system
 ![System](web_scraping_system.png)
 The system relies on Selenium (2) to automate web navigation and data scraping. The scraped data (attributes and reviews) is converted to json objects and saved either in local storage or AWS S3 bucket (5). The image data is stored separately. If the RDS option is selected, the data is also tabularized using Pandas (3) and stored in an AWS Postgres RDS system (4). 
