@@ -6,7 +6,7 @@ This web scraper scrapes book details from a specified Amazon book category. The
 
 ## About the system
 ![System](web_scraping_system.png)
-The system relies on Selenium (2) to automate web navigation and fetch data. The scraped data (attributes and reviews) is converted to json objects and saved either in local storage or AWS S3 bucket (5). The image data is stored separately. If the RDS option is selected, the data is also tabularized using Pandas (3) and stored in an AWS Postgres RDS system (4). 
+The system relies on Selenium (2) to automate web navigation and data scraping. The scraped data (attributes and reviews) is converted to json objects and saved either in local storage or AWS S3 bucket (5). The image data is stored separately. If the RDS option is selected, the data is also tabularized using Pandas (3) and stored in an AWS Postgres RDS system (4). 
 
 The application is containerized using docker and runs on an AWS EC2 instance on the cloud. A prometheus (8) monitoring system is also deployed to monitor the health of the EC2 host, the docker and the containerized application. The monitored metrics are tracked by a Grafana (9) dashboard. 
 
